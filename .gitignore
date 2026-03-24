@@ -1,0 +1,10 @@
+# IDE-uri JetBrains (Goland)
+.idea/
+*.iml
+
+# Binare de Go (dacă vei compila proiectul local)
+*.exe
+/CMD
+
+# Mac OS (în caz că va rula cineva pe Mac)
+.DS_Store

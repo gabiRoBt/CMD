@@ -1,0 +1,43 @@
+# Dockerfile.arena
+# Imaginea folosită pentru containerele de joc
+# Build: docker build -f Dockerfile.arena -t nuclearhide-arena:latest .
+
+FROM debian:bookworm-slim
+
+# Instalăm doar ce e necesar pentru SSH și utilitarele de joc
+RUN apt-get update && apt-get install -y \
+    openssh-server \
+    bash \
+    coreutils \
+    findutils \
+    grep \
+    && rm -rf /var/lib/apt/lists/*
+
+# Creăm userul cu care se conectează jucătorul
+RUN useradd -m -s /bin/bash player && \
+    mkdir -p /home/player/.ssh && \
+    chmod 700 /home/player/.ssh
+
+# Creăm directorul pentru "pouch" (inventarul tactic)
+RUN mkdir -p /home/player/pouch && \
+    chown -R player:player /home/player
+
+# Scriptul care se rulează la nuke (condiția de victorie)
+# Jucătorul trebuie să îl apeleze cu parola corectă
+COPY scripts/nuke_system.sh /bin/nuke_system
+RUN chmod +x /bin/nuke_system && \
+    chown root:root /bin/nuke_system
+
+# Scriptul de inițializare — rulat la pornirea containerului
+# Preia PLAYER_PUBLIC_KEY din env și o pune în authorized_keys
+COPY scripts/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Configurare SSH: dezactivăm autentificarea prin parolă
+RUN mkdir -p /run/sshd && \
+    sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config && \
+    sed -i 's/#PubkeyAuthentication yes/PubkeyAuthentication yes/' /etc/ssh/sshd_config
+
+EXPOSE 22
+
+ENTRYPOINT ["/entrypoint.sh"]
