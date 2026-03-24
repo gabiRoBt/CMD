@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CMD :: Arena</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --green: #00ff41;
+            --green-dim: #00aa2a;
+            --green-dark: #003310;
+            --amber: #ffb300;
+            --red: #ff3131;
+            --bg: #020d02;
+            --panel: #040f04;
+            --border: #0a3a0a;
+            --text: #00cc33;
+            --text-dim: #005a14;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Share Tech Mono', monospace;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Scanline overlay */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: repeating-linear-gradient(
+                    0deg,
+                    transparent,
+                    transparent 2px,
+                    rgba(0,0,0,0.15) 2px,
+                    rgba(0,0,0,0.15) 4px
+            );
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        /* CRT flicker */
+        @keyframes flicker {
+            0%, 100% { opacity: 1; }
+            92% { opacity: 1; }
+            93% { opacity: 0.92; }
+            94% { opacity: 1; }
+            96% { opacity: 0.95; }
+        }
+        body { animation: flicker 8s infinite; }
+
+        /* ── HEADER ── */
+        header {
+            border-bottom: 1px solid var(--border);
+            padding: 1.5rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: relative;
+        }
+        header::after {
+            content: '';
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--green-dim), transparent);
+        }
+
+        .logo {
+            font-family: 'Orbitron', monospace;
+            font-weight: 900;
+            font-size: 1.8rem;
+            letter-spacing: 0.3em;
+            color: var(--green);
+            text-shadow: 0 0 20px var(--green), 0 0 40px var(--green-dim);
+        }
+        .logo span { color: var(--green-dim); }
+
+        .status-bar {
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            text-align: right;
+        }
+        .status-bar .dot {
+            display: inline-block;
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: var(--green);
+            box-shadow: 0 0 6px var(--green);
+            margin-right: 6px;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        /* ── LAYOUT ── */
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 2rem;
+            display: grid;
+            grid-template-columns: 340px 1fr;
+            gap: 2rem;
+        }
+
+        /* ── PANEL ── */
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            padding: 1.5rem;
+            position: relative;
+        }
+        .panel::before {
+            content: attr(data-label);
+            position: absolute;
+            top: -1px; left: 1rem;
+            background: var(--bg);
+            padding: 0 0.5rem;
+            font-size: 0.65rem;
+            color: var(--green-dim);
+            letter-spacing: 0.15em;
+        }
+
+        /* ── INPUT ── */
+        .field { margin-bottom: 1rem; }
+        .field label {
+            display: block;
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            letter-spacing: 0.1em;
+            margin-bottom: 0.4rem;
+        }
+        .field input {
+            width: 100%;
+            background: #000;
+            border: 1px solid var(--border);
+            color: var(--green);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.85rem;
+            padding: 0.5rem 0.7rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .field input:focus {
+            border-color: var(--green-dim);
+            box-shadow: 0 0 8px rgba(0,255,65,0.1);
+        }
+        .field input::placeholder { color: var(--text-dim); }
+
+        /* ── BUTTONS ── */
+        .btn {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.8rem;
+            letter-spacing: 0.1em;
+            padding: 0.6rem 1.2rem;
+            border: 1px solid;
+            background: transparent;
+            cursor: pointer;
+            transition: all 0.15s;
+            text-transform: uppercase;
+            width: 100%;
+            margin-top: 0.5rem;
+        }
+        .btn-primary {
+            border-color: var(--green);
+            color: var(--green);
+        }
+        .btn-primary:hover {
+            background: var(--green);
+            color: #000;
+            box-shadow: 0 0 20px rgba(0,255,65,0.3);
+        }
+        .btn-secondary {
+            border-color: var(--amber);
+            color: var(--amber);
+        }
+        .btn-secondary:hover {
+            background: var(--amber);
+            color: #000;
+            box-shadow: 0 0 20px rgba(255,179,0,0.3);
+        }
+        .btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        /* ── ARENA LIST ── */
+        .arena-list { margin-top: 0.5rem; }
+        .arena-item {
+            border: 1px solid var(--border);
+            padding: 0.8rem 1rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            transition: all 0.15s;
+            position: relative;
+            overflow: hidden;
+        }
+        .arena-item:hover {
+            border-color: var(--green-dim);
+            background: rgba(0,255,65,0.03);
+        }
+        .arena-item.selected {
+            border-color: var(--green);
+            background: rgba(0,255,65,0.06);
+        }
+        .arena-id {
+            font-size: 0.75rem;
+            color: var(--green-dim);
+        }
+        .arena-phase {
+            font-size: 0.65rem;
+            padding: 0.2rem 0.5rem;
+            border: 1px solid;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+        .phase-waiting { border-color: var(--green-dim); color: var(--green-dim); }
+        .phase-setup { border-color: var(--amber); color: var(--amber); }
+        .phase-infiltrate { border-color: var(--red); color: var(--red); }
+        .phase-finished { border-color: var(--text-dim); color: var(--text-dim); }
+
+        .arena-players {
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            margin-top: 0.25rem;
+        }
+
+        .empty-list {
+            color: var(--text-dim);
+            font-size: 0.75rem;
+            text-align: center;
+            padding: 2rem 0;
+            border: 1px dashed var(--border);
+        }
+
+        /* ── TERMINAL OUTPUT ── */
+        .terminal {
+            background: #000;
+            border: 1px solid var(--border);
+            padding: 1rem;
+            height: 280px;
+            overflow-y: auto;
+            font-size: 0.8rem;
+            line-height: 1.6;
+            margin-top: 1rem;
+        }
+        .terminal::-webkit-scrollbar { width: 4px; }
+        .terminal::-webkit-scrollbar-track { background: #000; }
+        .terminal::-webkit-scrollbar-thumb { background: var(--border); }
+
+        .log-line { display: block; }
+        .log-info { color: var(--text); }
+        .log-success { color: var(--green); }
+        .log-warn { color: var(--amber); }
+        .log-error { color: var(--red); }
+        .log-cmd {
+            color: var(--green);
+            background: rgba(0,255,65,0.05);
+            border-left: 2px solid var(--green);
+            padding: 0.3rem 0.6rem;
+            margin: 0.4rem 0;
+            display: block;
+            letter-spacing: 0.05em;
+            cursor: pointer;
+        }
+        .log-cmd:hover { background: rgba(0,255,65,0.1); }
+        .log-dim { color: var(--text-dim); }
+
+        /* ── GAME PANEL ── */
+        #game-section { display: none; }
+        #game-section .phase-indicator {
+            font-family: 'Orbitron', monospace;
+            font-size: 0.9rem;
+            letter-spacing: 0.2em;
+            text-align: center;
+            padding: 0.8rem;
+            border: 1px solid;
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+        }
+        .phase-indicator.setup {
+            border-color: var(--amber);
+            color: var(--amber);
+            box-shadow: 0 0 20px rgba(255,179,0,0.1);
+        }
+        .phase-indicator.infiltrate {
+            border-color: var(--red);
+            color: var(--red);
+            box-shadow: 0 0 20px rgba(255,49,49,0.15);
+            animation: blink-border 1s infinite;
+        }
+        @keyframes blink-border {
+            50% { box-shadow: 0 0 30px rgba(255,49,49,0.3); }
+        }
+
+        .countdown {
+            font-family: 'Orbitron', monospace;
+            font-size: 2.5rem;
+            font-weight: 900;
+            text-align: center;
+            color: var(--amber);
+            text-shadow: 0 0 30px rgba(255,179,0,0.5);
+            margin: 1rem 0;
+            letter-spacing: 0.1em;
+        }
+
+        .ssh-box {
+            background: #000;
+            border: 1px solid var(--green);
+            padding: 1rem;
+            margin: 1rem 0;
+            position: relative;
+        }
+        .ssh-box label {
+            font-size: 0.6rem;
+            color: var(--text-dim);
+            letter-spacing: 0.15em;
+            display: block;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+        }
+        .ssh-cmd {
+            color: var(--green);
+            font-size: 0.85rem;
+            word-break: break-all;
+        }
+        .copy-btn {
+            position: absolute;
+            top: 0.5rem; right: 0.5rem;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.6rem;
+            background: transparent;
+            border: 1px solid var(--green-dim);
+            color: var(--green-dim);
+            padding: 0.2rem 0.5rem;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+        .copy-btn:hover { border-color: var(--green); color: var(--green); }
+
+        /* ── WINNER OVERLAY ── */
+        #winner-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.92);
+            z-index: 500;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            text-align: center;
+        }
+        #winner-overlay.show { display: flex; }
+        .winner-title {
+            font-family: 'Orbitron', monospace;
+            font-size: 3rem;
+            font-weight: 900;
+            letter-spacing: 0.3em;
+            margin-bottom: 1rem;
+        }
+        .winner-title.won {
+            color: var(--green);
+            text-shadow: 0 0 40px var(--green), 0 0 80px var(--green-dim);
+            animation: glow-pulse 1.5s infinite;
+        }
+        .winner-title.lost {
+            color: var(--red);
+            text-shadow: 0 0 40px var(--red);
+        }
+        @keyframes glow-pulse {
+            50% { text-shadow: 0 0 60px var(--green), 0 0 120px var(--green-dim); }
+        }
+        .winner-sub {
+            color: var(--text-dim);
+            font-size: 0.9rem;
+            margin-bottom: 2rem;
+        }
+
+        /* ── MISC ── */
+        .section-title {
+            font-size: 0.65rem;
+            color: var(--text-dim);
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .section-title::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+
+        .role-badge {
+            display: inline-block;
+            padding: 0.2rem 0.6rem;
+            font-size: 0.65rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+        .role-host { border: 1px solid var(--green); color: var(--green); }
+        .role-guest { border: 1px solid var(--amber); color: var(--amber); }
+
+        .ready-indicator {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            margin-top: 0.5rem;
+            text-align: center;
+        }
+
+        @keyframes typewriter {
+            from { opacity: 0; transform: translateX(-4px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        .animate-in {
+            animation: typewriter 0.2s ease-out forwards;
+        }
+
+        /* Blinking cursor */
+        .cursor::after {
+            content: '█';
+            animation: blink 1s infinite;
+        }
+        @keyframes blink { 50% { opacity: 0; } }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="logo">CMD<span>::</span>ARENA</div>
+    <div class="status-bar">
+        <div><span class="dot"></span>SERVER ONLINE</div>
+        <div id="ws-status">WS: CONNECTING...</div>
+        <div id="current-player" style="color:var(--green-dim)"></div>
+    </div>
+</header>
+
+<div class="container">
+
+    <!-- ── STÂNGA: Lobby Controls ── -->
+    <div>
+        <div class="panel" data-label="// IDENTIFICARE">
+            <div class="field">
+                <label>CALLSIGN (player ID)</label>
+                <input type="text" id="player-id" placeholder="ex: ghost_r00t" maxlength="24">
+            </div>
+            <button class="btn btn-primary" onclick="setPlayerID()">IDENTIFICARE</button>
+        </div>
+
+        <div class="panel" style="margin-top:1rem" data-label="// ACȚIUNI">
+            <button class="btn btn-primary" onclick="createArena()" id="btn-create" disabled>
+                [ + ] CREAZĂ ARENĂ
+            </button>
+            <button class="btn btn-secondary" onclick="joinSelected()" id="btn-join" disabled>
+                [ → ] ALĂTURĂ-TE
+            </button>
+            <button class="btn btn-primary" onclick="setReady()" id="btn-ready" disabled style="border-color:var(--green);margin-top:1rem">
+                [ ✓ ] READY
+            </button>
+            <div class="ready-indicator" id="ready-status"></div>
+        </div>
+
+        <!-- Joc activ -->
+        <div id="game-section" class="panel" style="margin-top:1rem" data-label="// MECI ACTIV">
+            <div class="phase-indicator setup" id="phase-indicator">SETUP PHASE</div>
+            <div class="countdown cursor" id="countdown">01:30</div>
+
+            <div class="ssh-box" id="ssh-box">
+                <label>COMANDĂ SSH — CONECTARE TERMINAL</label>
+                <div class="ssh-cmd" id="ssh-command">...</div>
+                <button class="copy-btn" onclick="copySSH()">COPY</button>
+            </div>
+
+            <div style="font-size:0.75rem; color:var(--text-dim); line-height:1.7">
+                <div id="phase-hint"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── DREAPTA: Arena List + Log ── -->
+    <div>
+        <div class="panel" data-label="// ARENE DISPONIBILE">
+            <div class="section-title">Arene active</div>
+            <div class="arena-list" id="arena-list">
+                <div class="empty-list">Nu există arene active.<br>Creează una sau actualizează.</div>
+            </div>
+            <button class="btn btn-secondary" onclick="refreshArenas()" style="margin-top:1rem;width:auto;padding:0.4rem 1rem">
+                [ ↻ ] ACTUALIZEAZĂ
+            </button>
+        </div>
+
+        <div class="panel" style="margin-top:1rem" data-label="// SISTEM LOG">
+            <div class="terminal" id="terminal">
+                <span class="log-dim">[CMD::Arena v0.1.0]</span><br>
+                <span class="log-dim">Conectează-te pentru a continua...</span><br>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Winner Overlay -->
+<div id="winner-overlay">
+    <div class="winner-title" id="winner-title">MISSION COMPLETE</div>
+    <div class="winner-sub" id="winner-sub"></div>
+    <button class="btn btn-primary" style="width:auto;padding:0.6rem 2rem" onclick="resetGame()">
+        [ ↺ ] JOACĂ DIN NOU
+    </button>
+</div>
+
+<script>
+    // ── State ──────────────────────────────────────────────────────────────────────
+    let state = {
+        playerID: null,
+        arenaID: null,
+        role: null,
+        phase: null,
+        selectedArenaID: null,
+        ws: null,
+        countdownInterval: null,
+        countdownSecs: 0,
+        sshCommand: null,
+        attackSSHCommand: null,
+        isReady: false,
+    };
+
+    // ── Terminal Log ───────────────────────────────────────────────────────────────
+    function log(msg, type = 'info') {
+        const t = document.getElementById('terminal');
+        const span = document.createElement('span');
+        span.className = `log-line log-${type} animate-in`;
+        const ts = new Date().toLocaleTimeString('ro', {hour12:false});
+        span.textContent = `[${ts}] ${msg}`;
+        t.appendChild(span);
+        t.appendChild(document.createElement('br'));
+        t.scrollTop = t.scrollHeight;
+    }
+
+    function logCmd(cmd) {
+        const t = document.getElementById('terminal');
+        const span = document.createElement('span');
+        span.className = 'log-cmd animate-in';
+        span.textContent = `$ ${cmd}`;
+        span.onclick = () => navigator.clipboard.writeText(cmd);
+        span.title = 'Click pentru a copia';
+        t.appendChild(span);
+        t.scrollTop = t.scrollHeight;
+    }
+
+    // ── WebSocket ──────────────────────────────────────────────────────────────────
+    function connectWS(playerID) {
+        const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+        const ws = new WebSocket(`${proto}://${location.host}/ws?player_id=${encodeURIComponent(playerID)}`);
+        state.ws = ws;
+
+        ws.onopen = () => {
+            document.getElementById('ws-status').textContent = 'WS: ONLINE';
+            document.getElementById('ws-status').style.color = 'var(--green)';
+            log('WebSocket conectat.', 'success');
+        };
+
+        ws.onclose = () => {
+            document.getElementById('ws-status').textContent = 'WS: OFFLINE';
+            document.getElementById('ws-status').style.color = 'var(--red)';
+            log('WebSocket deconectat. Reconectare în 3s...', 'warn');
+            setTimeout(() => connectWS(playerID), 3000);
+        };
+
+        ws.onerror = () => log('Eroare WebSocket.', 'error');
+
+        ws.onmessage = (ev) => {
+            try {
+                const event = JSON.parse(ev.data);
+                handleWSEvent(event);
+            } catch(e) {
+                console.error('WS parse error', e);
+            }
+        };
+    }
+
+    function handleWSEvent(event) {
+        switch(event.type) {
+            case 'arena_list':
+                renderArenaList(event.payload);
+                break;
+
+            case 'game_start':
+                onGameStart(event.payload);
+                break;
+
+            case 'phase_change':
+                onPhaseChange(event.payload);
+                break;
+
+            case 'game_over':
+                onGameOver(event.payload);
+                break;
+
+            case 'error':
+                log(`Server error: ${event.payload}`, 'error');
+                break;
+        }
+    }
+
+    // ── Arena List ─────────────────────────────────────────────────────────────────
+    function renderArenaList(arenas) {
+        const container = document.getElementById('arena-list');
+        if (!arenas || arenas.length === 0) {
+            container.innerHTML = '<div class="empty-list">Nu există arene active.<br>Creează una sau actualizează.</div>';
+            return;
+        }
+        container.innerHTML = '';
+        arenas.forEach(a => {
+            const div = document.createElement('div');
+            div.className = 'arena-item' + (a.id === state.selectedArenaID ? ' selected' : '');
+            div.onclick = () => selectArena(a.id);
+
+            const phaseClass = `phase-${a.phase}`;
+            const guestInfo = a.has_guest ? `<span style="color:var(--green-dim)">${a.guest_id}</span>` : '<span style="color:var(--text-dim)">asteapta...</span>';
+
+            div.innerHTML = `
+      <div>
+        <div class="arena-id">${a.id.substring(0,28)}</div>
+        <div class="arena-players">HOST: <span style="color:var(--green)">${a.host_id}</span> | GUEST: ${guestInfo}</div>
+      </div>
+      <span class="arena-phase ${phaseClass}">${a.phase}</span>
+    `;
+            container.appendChild(div);
+        });
+    }
+
+    function selectArena(id) {
+        state.selectedArenaID = id;
+        document.querySelectorAll('.arena-item').forEach(el => el.classList.remove('selected'));
+        event && event.currentTarget && event.currentTarget.classList.add('selected');
+        refreshArenas(); // re-render cu selecția
+        if (state.playerID && !state.arenaID) {
+            document.getElementById('btn-join').disabled = false;
+        }
+        log(`Arenă selectată: ${id.substring(0,20)}...`, 'info');
+    }
+
+    async function refreshArenas() {
+        try {
+            const res = await fetch('/api/arenas');
+            const arenas = await res.json();
+            renderArenaList(arenas);
+        } catch(e) {
+            log('Nu am putut prelua lista de arene.', 'error');
+        }
+    }
+
+    // ── Player ID ──────────────────────────────────────────────────────────────────
+    function setPlayerID() {
+        const input = document.getElementById('player-id');
+        const id = input.value.trim().replace(/\s+/g, '_');
+        if (!id) { log('Introdu un callsign valid.', 'error'); return; }
+
+        state.playerID = id;
+        document.getElementById('current-player').textContent = `>> ${id}`;
+        document.getElementById('btn-create').disabled = false;
+        input.disabled = true;
+        log(`Identificat ca: ${id}`, 'success');
+        connectWS(id);
+    }
+
+    // ── Create / Join ──────────────────────────────────────────────────────────────
+    async function createArena() {
+        if (!state.playerID) return;
+        try {
+            const res = await fetch('/api/arena/create', {
+                method: 'POST',
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({player_id: state.playerID})
+            });
+            const data = await res.json();
+            state.arenaID = data.arena_id;
+            state.role = data.role;
+            log(`Arenă creată: ${data.arena_id}`, 'success');
+            log(`Rol: HOST — așteaptă un adversar`, 'info');
+            document.getElementById('btn-create').disabled = true;
+            document.getElementById('btn-join').disabled = true;
+            document.getElementById('btn-ready').disabled = false;
+            document.getElementById('ready-status').textContent = 'Fă ready când ești pregătit';
+        } catch(e) {
+            log('Eroare la crearea arenei.', 'error');
+        }
+    }
+
+    async function joinSelected() {
+        if (!state.playerID || !state.selectedArenaID) return;
+        try {
+            const res = await fetch('/api/arena/join', {
+                method: 'POST',
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({arena_id: state.selectedArenaID, player_id: state.playerID})
+            });
+            if (!res.ok) { log(await res.text(), 'error'); return; }
+            const data = await res.json();
+            state.arenaID = data.arena_id;
+            state.role = data.role;
+            log(`Te-ai alăturat arenei ca GUEST`, 'success');
+            document.getElementById('btn-create').disabled = true;
+            document.getElementById('btn-join').disabled = true;
+            document.getElementById('btn-ready').disabled = false;
+            document.getElementById('ready-status').textContent = 'Fă ready când ești pregătit';
+        } catch(e) {
+            log('Eroare la alăturare.', 'error');
+        }
+    }
+
+    async function setReady() {
+        if (!state.arenaID) return;
+        try {
+            const res = await fetch('/api/arena/ready', {
+                method: 'POST',
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({arena_id: state.arenaID, player_id: state.playerID})
+            });
+            if (!res.ok) { log(await res.text(), 'error'); return; }
+            state.isReady = true;
+            document.getElementById('btn-ready').disabled = true;
+            document.getElementById('ready-status').textContent = '✓ READY — așteptăm adversarul...';
+            document.getElementById('ready-status').style.color = 'var(--green)';
+            log('Ești READY. Se așteaptă adversarul...', 'success');
+        } catch(e) {
+            log('Eroare la Ready.', 'error');
+        }
+    }
+
+    // ── Game Events ────────────────────────────────────────────────────────────────
+    function onGameStart(payload) {
+        state.phase = payload.phase;
+        state.sshCommand = payload.ssh_command;
+        state.countdownSecs = payload.setup_seconds;
+
+        document.getElementById('game-section').style.display = 'block';
+        document.getElementById('ssh-command').textContent = payload.ssh_command;
+
+        updatePhaseUI('setup', `SETUP PHASE — ASCUNDE nuclearcodes.txt`,
+            `Ai ${payload.setup_seconds}s să îți ascunzi fișierul. Creează capcane, alias-uri false, directoare labirint.`);
+
+        startCountdown(payload.setup_seconds);
+
+        log('=== JOC ÎNCEPUT ===', 'success');
+        log(`Rol: ${payload.role.toUpperCase()} | Faza: SETUP`, 'info');
+        log('Comandă SSH pentru containerul tău:', 'info');
+        logCmd(payload.ssh_command);
+        if (payload.private_key) {
+            showPrivateKey(payload.private_key);
+        }
+    }
+
+    function showPrivateKey(pem) {
+        const t = document.getElementById('terminal');
+
+        // Bloc vizual cu cheia
+        const box = document.createElement('div');
+        box.style.cssText = 'background:#000;border:1px solid var(--amber);padding:0.8rem;margin:0.5rem 0;';
+        box.innerHTML = `
+        <div style="color:var(--amber);font-size:0.65rem;letter-spacing:0.1em;margin-bottom:0.5rem">
+            ⚠ CHEIA TA PRIVATĂ SSH — SALVEAZĂ ACUM
+        </div>
+        <textarea readonly style="
+            width:100%;height:80px;background:#000;border:none;
+            color:var(--green);font-family:'Share Tech Mono',monospace;
+            font-size:0.65rem;resize:none;outline:none;
+        ">${pem}</textarea>
+        <button onclick="downloadKey('${btoa(pem)}')" style="
+            margin-top:0.4rem;font-family:'Share Tech Mono',monospace;
+            font-size:0.7rem;background:transparent;border:1px solid var(--amber);
+            color:var(--amber);padding:0.3rem 0.8rem;cursor:pointer;
+        ">[ ↓ ] DESCARCĂ cmd_key</button>
+    `;
+        t.appendChild(box);
+        t.scrollTop = t.scrollHeight;
+    }
+
+    function downloadKey(b64pem) {
+        const pem = atob(b64pem);
+        const blob = new Blob([pem], {type: 'text/plain'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'cmd_key';
+        a.click();
+        log('Cheie descărcată. Salvează-o în ~/.ssh/cmd_key și setează chmod 600.', 'warn');
+    }
+    
+
+    function onPhaseChange(payload) {
+        if (payload.phase === 'infiltrate') {
+            state.phase = 'infiltrate';
+            state.attackSSHCommand = payload.ssh_command;
+            clearInterval(state.countdownInterval);
+
+            document.getElementById('ssh-command').textContent = payload.ssh_command;
+            updatePhaseUI('infiltrate', '⚔ INFILTRATE — ATACĂ ADVERSARUL',
+                `Găsește nuclearcodes.txt și rulează: /bin/nuke_system <parola>`);
+
+            log('=== FAZA INFILTRATE ===', 'warn');
+            log('Acum te conectezi la containerul ADVERSARULUI:', 'warn');
+            logCmd(payload.ssh_command);
+        }
+    }
+
+    function onGameOver(payload) {
+        clearInterval(state.countdownInterval);
+        const overlay = document.getElementById('winner-overlay');
+        const title = document.getElementById('winner-title');
+        const sub = document.getElementById('winner-sub');
+
+        overlay.classList.add('show');
+
+        if (payload.you_won) {
+            title.textContent = '☢ MISSION COMPLETE';
+            title.className = 'winner-title won';
+            sub.textContent = 'Ai compromis sistemul adversarului. Victorie.';
+            log('=== VICTORIE ===', 'success');
+        } else {
+            title.textContent = '✗ SISTEM COMPROMIS';
+            title.className = 'winner-title lost';
+            sub.textContent = 'Adversarul ți-a găsit nuclearcodes.txt. Încearcă din nou.';
+            log('=== ÎNFRÂNGERE ===', 'error');
+        }
+    }
+
+    // ── UI Helpers ─────────────────────────────────────────────────────────────────
+    function updatePhaseUI(phase, label, hint) {
+        const indicator = document.getElementById('phase-indicator');
+        indicator.textContent = label;
+        indicator.className = `phase-indicator ${phase}`;
+        document.getElementById('phase-hint').textContent = hint;
+    }
+
+    function startCountdown(secs) {
+        state.countdownSecs = secs;
+        clearInterval(state.countdownInterval);
+        const el = document.getElementById('countdown');
+
+        state.countdownInterval = setInterval(() => {
+            state.countdownSecs--;
+            if (state.countdownSecs <= 0) {
+                clearInterval(state.countdownInterval);
+                el.textContent = '00:00';
+                el.classList.remove('cursor');
+                return;
+            }
+            const m = Math.floor(state.countdownSecs / 60).toString().padStart(2,'0');
+            const s = (state.countdownSecs % 60).toString().padStart(2,'0');
+            el.textContent = `${m}:${s}`;
+            if (state.countdownSecs <= 10) el.style.color = 'var(--red)';
+        }, 1000);
+    }
+
+    function copySSH() {
+        const cmd = document.getElementById('ssh-command').textContent;
+        navigator.clipboard.writeText(cmd).then(() => {
+            log('Comandă SSH copiată în clipboard.', 'success');
+        });
+    }
+
+    function resetGame() {
+        location.reload();
+    }
+</script>
+</body>
+</html>

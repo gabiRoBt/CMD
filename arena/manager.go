@@ -297,6 +297,23 @@ func GetSSHCommand(serverIP string, player *Player) string {
 	return fmt.Sprintf("ssh player@%s -p %d -i ~/.ssh/cmd_key", serverIP, player.SSHPort)
 }
 
+func (m *Manager) ListArenas() []ArenaView {
+	views := make([]ArenaView, 0, len(m.arenas))
+	for _, a := range m.arenas {
+		view := ArenaView{
+			ID:       a.ID,
+			Phase:    string(a.Phase),
+			HostID:   a.Host.ID,
+			HasGuest: a.Guest != nil,
+		}
+		if a.Guest != nil {
+			view.GuestID = a.Guest.ID
+		}
+		views = append(views, view)
+	}
+	return views
+}
+
 func generateID(prefix string) string {
 	return fmt.Sprintf("%s-%d", prefix, time.Now().UnixNano())
 }
