@@ -33,7 +33,6 @@ type GameStartPayload struct {
 	Role       string `json:"role"`
 	Phase      string `json:"phase"`
 	SetupSecs  int    `json:"setup_seconds"`
-	PrivateKey string `json:"private_key"`
 }
 
 // PhaseChangePayload — trimis când faza se schimbă
