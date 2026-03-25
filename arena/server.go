@@ -212,6 +212,7 @@ func (s *Server) notifyGameStart(a *Arena) {
 			Role:       string(RoleHost),
 			Phase:      string(PhaseSetup),
 			SetupSecs:  int(a.SetupDuration.Seconds()),
+			PrivateKey: a.Host.Keys.PrivateKeyPEM, // ← ADAUGĂ ASTA
 		},
 	})
 
@@ -223,6 +224,7 @@ func (s *Server) notifyGameStart(a *Arena) {
 			Role:       string(RoleGuest),
 			Phase:      string(PhaseSetup),
 			SetupSecs:  int(a.SetupDuration.Seconds()),
+			PrivateKey: a.Guest.Keys.PrivateKeyPEM, // ← ADAUGĂ ASTA
 		},
 	})
 }
@@ -264,33 +266,18 @@ func (s *Server) watchPhaseTransition(a *Arena) {
 	log.Printf("[Arena %s] Jucătorii notificați de Infiltrate", a.ID)
 }
 
-func (s *Server) notifyGameStart(a *Arena) {
-	hostCmd := fmt.Sprintf("ssh player@%s -p %d -i ~/.ssh/cmd_key", s.serverIP, a.Host.SSHPort)
-	guestCmd := fmt.Sprintf("ssh player@%s -p %d -i ~/.ssh/cmd_key", s.serverIP, a.Guest.SSHPort)
-
-	s.hub.SendToPlayer(a.Host.ID, WSEvent{
-		Type: EventGameStart,
-		Payload: GameStartPayload{
-			ArenaID:    a.ID,
-			SSHCommand: hostCmd,
-			Role:       string(RoleHost),
-			Phase:      string(PhaseSetup),
-			SetupSecs:  int(a.SetupDuration.Seconds()),
-			PrivateKey: a.Host.Keys.PrivateKeyPEM, // ← ADAUGĂ ASTA
-		},
-	})
-
-	s.hub.SendToPlayer(a.Guest.ID, WSEvent{
-		Type: EventGameStart,
-		Payload: GameStartPayload{
-			ArenaID:    a.ID,
-			SSHCommand: guestCmd,
-			Role:       string(RoleGuest),
-			Phase:      string(PhaseSetup),
-			SetupSecs:  int(a.SetupDuration.Seconds()),
-			PrivateKey: a.Guest.Keys.PrivateKeyPEM, // ← ADAUGĂ ASTA
-		},
-	})
+func (s *Server) notifyGameOver(a *Arena, winner *Player) {
+	for _, p := range []*Player{a.Host, a.Guest} {
+		s.hub.SendToPlayer(p.ID, WSEvent{
+			Type: EventGameOver,
+			Payload: GameOverPayload{
+				ArenaID:    a.ID,
+				WinnerID:   winner.ID,
+				WinnerRole: string(winner.Role),
+				YouWon:     p.ID == winner.ID,
+			},
+		})
+	}
 }
 
 func (s *Server) broadcastArenaList() {
