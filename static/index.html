@@ -5,538 +5,323 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CMD :: Arena</title>
     <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --green: #00ff41;
-            --green-dim: #00aa2a;
-            --green-dark: #003310;
-            --amber: #ffb300;
-            --red: #ff3131;
-            --bg: #020d02;
-            --panel: #040f04;
-            --border: #0a3a0a;
-            --text: #00cc33;
-            --text-dim: #005a14;
-        }
-        * { margin:0; padding:0; box-sizing:border-box; }
-        body {
-            background:var(--bg); color:var(--text);
-            font-family:'Share Tech Mono',monospace;
-            min-height:100vh; overflow-x:hidden;
-        }
-        body::before {
-            content:''; position:fixed; inset:0; pointer-events:none; z-index:1000;
-            background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.12) 2px,rgba(0,0,0,0.12) 4px);
-        }
-        @keyframes flicker { 92%{opacity:1} 93%{opacity:.93} 94%{opacity:1} 96%{opacity:.96} }
-        body { animation:flicker 8s infinite; }
 
-        header {
-            border-bottom:1px solid var(--border); padding:1.2rem 2rem;
-            display:flex; align-items:center; justify-content:space-between;
-        }
-        .logo {
-            font-family:'Orbitron',monospace; font-weight:900; font-size:1.6rem;
-            letter-spacing:.3em; color:var(--green);
-            text-shadow:0 0 20px var(--green),0 0 40px var(--green-dim);
-        }
-        .logo span { color:var(--green-dim); }
-        .status-bar { font-size:.7rem; color:var(--text-dim); text-align:right; }
-        .dot {
-            display:inline-block; width:6px; height:6px; border-radius:50%;
-            background:var(--green); box-shadow:0 0 6px var(--green);
-            margin-right:5px; animation:pulse 2s infinite;
-        }
-        @keyframes pulse { 50%{opacity:.3} }
-
-        .container {
-            max-width:1100px; margin:0 auto; padding:2rem;
-            display:grid; grid-template-columns:360px 1fr; gap:2rem;
-        }
-
-        .panel {
-            background:var(--panel); border:1px solid var(--border);
-            padding:1.4rem; position:relative; margin-bottom:1rem;
-        }
-        .panel-label {
-            position:absolute; top:-1px; left:1rem;
-            background:var(--bg); padding:0 .5rem;
-            font-size:.6rem; color:var(--green-dim); letter-spacing:.15em;
-        }
-
-        .field { margin-bottom:.9rem; }
-        .field label { display:block; font-size:.65rem; color:var(--text-dim); letter-spacing:.1em; margin-bottom:.35rem; }
-        .field input, .field textarea {
-            width:100%; background:#000; border:1px solid var(--border);
-            color:var(--green); font-family:'Share Tech Mono',monospace;
-            font-size:.82rem; padding:.45rem .65rem; outline:none; transition:border-color .2s;
-            resize:none;
-        }
-        .field input:focus, .field textarea:focus {
-            border-color:var(--green-dim); box-shadow:0 0 8px rgba(0,255,65,.08);
-        }
-        .field input::placeholder, .field textarea::placeholder { color:var(--text-dim); }
-        .field textarea { height:72px; line-height:1.4; font-size:.72rem; }
-
-        .btn {
-            font-family:'Share Tech Mono',monospace; font-size:.78rem;
-            letter-spacing:.1em; padding:.55rem 1rem; border:1px solid;
-            background:transparent; cursor:pointer; transition:all .15s;
-            text-transform:uppercase; width:100%; margin-top:.4rem;
-        }
-        .btn-green { border-color:var(--green); color:var(--green); }
-        .btn-green:hover { background:var(--green); color:#000; box-shadow:0 0 20px rgba(0,255,65,.3); }
-        .btn-amber { border-color:var(--amber); color:var(--amber); }
-        .btn-amber:hover { background:var(--amber); color:#000; box-shadow:0 0 20px rgba(255,179,0,.3); }
-        .btn:disabled { opacity:.3; cursor:not-allowed; }
-
-        /* Key setup hint */
-        .keygen-hint {
-            background:#000; border:1px solid var(--border);
-            padding:.8rem 1rem; margin-bottom:.9rem; font-size:.72rem;
-            color:var(--text-dim); line-height:1.7;
-        }
-        .keygen-hint code {
-            color:var(--green); background:rgba(0,255,65,.05);
-            padding:.1rem .3rem; display:block; margin:.3rem 0;
-        }
-
-        /* Arena list */
-        .arena-list { min-height:60px; }
-        .arena-item {
-            border:1px solid var(--border); padding:.7rem 1rem;
-            margin-bottom:.4rem; display:flex; align-items:center;
-            justify-content:space-between; cursor:pointer; transition:all .15s;
-        }
-        .arena-item:hover { border-color:var(--green-dim); background:rgba(0,255,65,.02); }
-        .arena-item.selected { border-color:var(--green); background:rgba(0,255,65,.05); }
-        .arena-id { font-size:.72rem; color:var(--green-dim); }
-        .arena-players { font-size:.65rem; color:var(--text-dim); margin-top:.2rem; }
-        .phase-badge {
-            font-size:.6rem; padding:.18rem .45rem; border:1px solid;
-            text-transform:uppercase; letter-spacing:.08em; white-space:nowrap;
-        }
-        .phase-waiting { border-color:var(--green-dim); color:var(--green-dim); }
-        .phase-setup { border-color:var(--amber); color:var(--amber); }
-        .phase-infiltrate { border-color:var(--red); color:var(--red); }
-        .phase-finished { border-color:var(--text-dim); color:var(--text-dim); }
-        .empty-list { color:var(--text-dim); font-size:.72rem; text-align:center; padding:1.5rem 0; border:1px dashed var(--border); }
-
-        /* Terminal */
-        .terminal {
-            background:#000; border:1px solid var(--border);
-            padding:.9rem; height:300px; overflow-y:auto;
-            font-size:.78rem; line-height:1.65;
-        }
-        .terminal::-webkit-scrollbar { width:3px; }
-        .terminal::-webkit-scrollbar-thumb { background:var(--border); }
-        .log-info { color:var(--text); }
-        .log-success { color:var(--green); }
-        .log-warn { color:var(--amber); }
-        .log-error { color:var(--red); }
-        .log-dim { color:var(--text-dim); }
-        .log-cmd {
-            display:block; color:var(--green); background:rgba(0,255,65,.04);
-            border-left:2px solid var(--green); padding:.25rem .6rem;
-            margin:.3rem 0; cursor:pointer; word-break:break-all;
-        }
-        .log-cmd:hover { background:rgba(0,255,65,.09); }
-        .log-cmd::before { content:'$ '; color:var(--green-dim); }
-
-        /* Game section */
-        #game-section { display:none; }
-        .phase-indicator {
-            font-family:'Orbitron',monospace; font-size:.85rem; letter-spacing:.2em;
-            text-align:center; padding:.7rem; border:1px solid; margin-bottom:.9rem;
-            text-transform:uppercase;
-        }
-        .pi-setup { border-color:var(--amber); color:var(--amber); box-shadow:0 0 15px rgba(255,179,0,.1); }
-        .pi-infiltrate {
-            border-color:var(--red); color:var(--red);
-            box-shadow:0 0 15px rgba(255,49,49,.15);
-            animation:blink-red 1.2s infinite;
-        }
-        @keyframes blink-red { 50%{ box-shadow:0 0 30px rgba(255,49,49,.35); } }
-
-        .countdown {
-            font-family:'Orbitron',monospace; font-size:2.4rem; font-weight:900;
-            text-align:center; color:var(--amber);
-            text-shadow:0 0 25px rgba(255,179,0,.4);
-            margin:.8rem 0; letter-spacing:.1em;
-        }
-        .countdown.danger { color:var(--red); text-shadow:0 0 25px rgba(255,49,49,.5); }
-
-        .ssh-box {
-            background:#000; border:1px solid var(--green);
-            padding:.9rem 1rem; margin:.8rem 0; position:relative;
-        }
-        .ssh-box label { font-size:.6rem; color:var(--text-dim); letter-spacing:.12em; display:block; margin-bottom:.4rem; text-transform:uppercase; }
-        .ssh-cmd { color:var(--green); font-size:.82rem; word-break:break-all; }
-        .copy-btn {
-            position:absolute; top:.5rem; right:.5rem;
-            font-family:'Share Tech Mono',monospace; font-size:.58rem;
-            background:transparent; border:1px solid var(--green-dim);
-            color:var(--green-dim); padding:.18rem .45rem; cursor:pointer;
-            text-transform:uppercase; letter-spacing:.08em; transition:all .15s;
-        }
-        .copy-btn:hover { border-color:var(--green); color:var(--green); }
-
-        /* Winner overlay */
-        #winner-overlay {
-            display:none; position:fixed; inset:0;
-            background:rgba(0,0,0,.93); z-index:500;
-            align-items:center; justify-content:center;
-            flex-direction:column; text-align:center;
-        }
-        #winner-overlay.show { display:flex; }
-        .winner-title {
-            font-family:'Orbitron',monospace; font-size:2.8rem;
-            font-weight:900; letter-spacing:.3em; margin-bottom:.8rem;
-        }
-        .won { color:var(--green); text-shadow:0 0 40px var(--green),0 0 80px var(--green-dim); animation:glow 1.5s infinite; }
-        .lost { color:var(--red); text-shadow:0 0 40px var(--red); }
-        @keyframes glow { 50%{ text-shadow:0 0 60px var(--green),0 0 120px var(--green-dim); } }
-        .winner-sub { color:var(--text-dim); font-size:.85rem; margin-bottom:1.8rem; }
-
-        .ready-status { font-size:.7rem; color:var(--text-dim); text-align:center; margin-top:.5rem; }
-        .section-sep {
-            font-size:.6rem; color:var(--text-dim); letter-spacing:.2em;
-            margin:.8rem 0 .5rem; display:flex; align-items:center; gap:.5rem;
-        }
-        .section-sep::after { content:''; flex:1; height:1px; background:var(--border); }
-
-        @keyframes fadein { from{opacity:0;transform:translateY(3px)} to{opacity:1;transform:none} }
-        .fadein { animation:fadein .25s ease-out; }
-    </style>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
+    <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
 </head>
-<body>
+<body class="skin-classic">
 
 <header>
     <div class="logo">CMD<span>::</span>ARENA</div>
     <div class="status-bar">
-        <div><span class="dot"></span><span id="ws-status">CONNECTING...</span></div>
-        <div id="current-player" style="color:var(--green-dim);margin-top:.2rem"></div>
+        <select class="header-select" id="skin-select" onchange="changeSkin(this.value)">
+            <option value="skin-classic">SKIN: CLASSIC</option>
+            <option value="skin-cyberpunk">SKIN: CYBERPUNK</option>
+            <option value="skin-wasteland">SKIN: WASTELAND</option>
+        </select>
+        <select class="header-select" id="lang-select" onchange="changeLang(this.value)">
+            <option value="ro">RO</option>
+            <option value="en">EN</option>
+        </select>
+        <div>
+            <div style="display:flex; align-items:center; justify-content:flex-end;">
+                <span class="dot"></span><span id="ws-status">CONNECTING...</span>
+            </div>
+            <div id="current-player" style="color:var(--green-dim);margin-top:.2rem"></div>
+        </div>
     </div>
 </header>
 
-<div class="container">
-
-    <!-- STÂNGA -->
+<div class="container" id="lobby-section">
     <div>
-
-        <!-- Step 1: Cheie SSH -->
-        <div class="panel" id="panel-key">
-            <span class="panel-label">// PASUL 1 — CHEIE SSH</span>
-
-            <div class="keygen-hint">
-                Dacă nu ai o cheie, generează una acum în terminal:
-                <code>ssh-keygen -t ed25519 -f ~/.ssh/cmd_key -N ""</code>
-                Apoi copiază conținutul lui <strong style="color:var(--green)">~/.ssh/cmd_key.pub</strong> mai jos.
-                <br><br>
-                Pe Windows (PowerShell):
-                <code>ssh-keygen -t ed25519 -f "$env:USERPROFILE\.ssh\cmd_key" -N '""'</code>
-                <code>Get-Content "$env:USERPROFILE\.ssh\cmd_key.pub"</code>
-            </div>
-
-            <div class="field">
-                <label>CONȚINUT ~/.ssh/cmd_key.pub</label>
-                <textarea id="public-key" placeholder="ssh-ed25519 AAAA... sau ssh-rsa AAAA..."></textarea>
-            </div>
-        </div>
-
-        <!-- Step 2: Identificare -->
         <div class="panel" id="panel-id">
-            <span class="panel-label">// PASUL 2 — IDENTIFICARE</span>
+            <span class="panel-label" id="lbl-ident">// IDENTIFICARE</span>
             <div class="field">
-                <label>CALLSIGN</label>
+                <label id="lbl-callsign">CALLSIGN (Nume jucător)</label>
                 <input type="text" id="player-id" placeholder="ex: ghost_r00t" maxlength="24">
             </div>
-            <button class="btn btn-green" onclick="identify()">IDENTIFICARE</button>
+            <button class="btn btn-green" id="btn-ident" onclick="identify()">CONECTARE LA RETEA</button>
         </div>
 
-        <!-- Step 3: Acțiuni -->
         <div class="panel" id="panel-actions" style="display:none">
-            <span class="panel-label">// PASUL 3 — ARENĂ</span>
+            <span class="panel-label" id="lbl-arena">// ARENĂ</span>
             <button class="btn btn-green" onclick="createArena()" id="btn-create">[ + ] CREAZĂ ARENĂ</button>
-            <button class="btn btn-amber" onclick="joinSelected()" id="btn-join" disabled>[ → ] ALĂTURĂ-TE LA SELECTATĂ</button>
-            <div class="section-sep">ready</div>
-            <button class="btn btn-green" onclick="setReady()" id="btn-ready" disabled>[ ✓ ] SUNT READY</button>
-            <div class="ready-status" id="ready-status"></div>
-        </div>
-
-        <!-- Joc activ -->
-        <div id="game-section" class="panel">
-            <span class="panel-label">// MECI ACTIV</span>
-            <div class="phase-indicator pi-setup" id="phase-indicator">SETUP PHASE</div>
-            <div class="countdown" id="countdown">01:30</div>
-            <div class="ssh-box">
-                <label>COMANDĂ SSH</label>
-                <div class="ssh-cmd" id="ssh-command">...</div>
-                <button class="copy-btn" onclick="copySSH()">COPY</button>
+            <button class="btn btn-amber" onclick="joinSelected()" id="btn-join" disabled>[ → ] ALĂTURĂ-TE</button>
+            <div style="margin:1rem 0; text-align:center; display:flex; gap:10px; justify-content:center;">
+                <button class="btn" onclick="leaveArena()" id="btn-leave" style="display:none; border-color:var(--red); color:var(--red); width:auto;">[ X ] LEAVE</button>
+                <button class="btn btn-green" onclick="setReady()" id="btn-ready" disabled style="width:auto;">[ ✓ ] SUNT READY</button>
             </div>
-            <div style="font-size:.72rem;color:var(--text-dim);line-height:1.7" id="phase-hint"></div>
+            <div id="ready-status" style="font-size:0.8rem; color:var(--text-dim); text-align:center;"></div>
         </div>
-
     </div>
 
-    <!-- DREAPTA -->
     <div>
-
         <div class="panel">
-            <span class="panel-label">// ARENE DISPONIBILE</span>
+            <span class="panel-label" id="lbl-list">// ARENE DISPONIBILE</span>
             <div class="arena-list" id="arena-list">
-                <div class="empty-list">Nicio arenă activă.</div>
+                <div class="empty-list" id="lbl-empty">Nicio arenă activă.</div>
             </div>
-            <button class="btn btn-amber" onclick="refreshArenas()" style="width:auto;padding:.35rem .9rem;margin-top:.8rem">[ ↻ ] ACTUALIZEAZĂ</button>
+            <button class="btn btn-amber" id="btn-refresh" onclick="refreshArenas()" style="width:auto;margin-top:.8rem">[ ↻ ] REFRESH</button>
         </div>
-
-        <div class="panel">
-            <span class="panel-label">// SISTEM LOG</span>
-            <div class="terminal" id="terminal">
-                <span class="log-dim">[CMD::Arena v0.2.0 — BYOK Edition]</span><br>
-                <span class="log-dim">Adaugă cheia publică și identifică-te pentru a continua.</span><br>
-            </div>
-        </div>
-
     </div>
 </div>
 
-<!-- Winner -->
+<div id="arena" style="display:none;">
+
+    <div id="arena-bg"></div>
+    <div class="base-sprite" id="base-sprite-player"></div>
+    <div class="base-sprite" id="base-sprite-enemy"></div>
+
+    <canvas id="strike-canvas"></canvas>
+
+    <div id="phase-bar">
+        <span class="phase-label">CMD::ARENA</span>
+        <span id="phase-name">◼ SETUP PHASE</span>
+        <span id="countdown">01:30</span>
+    </div>
+
+    <div class="hp-bar-wrap" id="hp-player">
+        <span class="hp-label" id="lbl-sys-you">SYS INTEGRITY (YOU)</span>
+        <div class="hp-track"><div class="hp-fill" id="hp-fill-p" style="width:100%"></div></div>
+    </div>
+    <div class="hp-bar-wrap" id="hp-enemy">
+        <span class="hp-label" id="lbl-sys-enemy">SYS INTEGRITY (ENEMY)</span>
+        <div class="hp-track"><div class="hp-fill" id="hp-fill-e" style="width:100%"></div></div>
+    </div>
+
+    <div id="terminal-win">
+        <div class="term-titlebar" id="term-drag">
+            <div class="term-btns"><span class="term-btn"></span><span class="term-btn"></span><span class="term-btn" style="background:#4A8C42"></span></div>
+            <span id="lbl-term-title">CMD :: SECURE TERMINAL</span>
+        </div>
+        <div id="term-body" style="flex:1; padding: 4px; overflow: hidden; background: rgba(0,0,0,0.85);"></div>
+    </div>
+
+    <div id="pouch">
+        <span class="pouch-label">POUCH</span>
+        <div class="ability" id="ab-0" onclick="useAbility(0)">
+            <span class="ab-icon">🚀</span><span class="ab-name">Strike</span><div class="cd-overlay" id="cd-0"></div>
+        </div>
+        <div class="ability" id="ab-1" onclick="useAbility(1)">
+            <span class="ab-icon">🌀</span><span class="ab-name">Scramble</span><div class="cd-overlay" id="cd-1"></div>
+        </div>
+        <div class="ability" id="ab-2" onclick="useAbility(2)">
+            <span class="ab-icon">🛡️</span><span class="ab-name">Shield</span><div class="cd-overlay" id="cd-2"></div>
+        </div>
+        <div class="ability" id="ab-3" onclick="useAbility(3)">
+            <span class="ab-icon">📡</span><span class="ab-name">Sonar</span><div class="cd-overlay" id="cd-3"></div>
+        </div>
+    </div>
+
+    <div id="notif"></div>
+</div>
+
 <div id="winner-overlay">
     <div class="winner-title" id="winner-title"></div>
     <div class="winner-sub" id="winner-sub"></div>
-    <button class="btn btn-green" style="width:auto;padding:.6rem 2rem" onclick="location.reload()">[ ↺ ] JOACĂ DIN NOU</button>
+    <button class="btn btn-green" id="btn-restart" style="width:auto;padding:.6rem 2rem" onclick="location.reload()">[ ↺ ] JOACĂ DIN NOU</button>
 </div>
 
 <script>
-    const state = {
-        playerID: null, publicKey: null,
-        arenaID: null, role: null, phase: null,
-        selectedArenaID: null, ws: null,
-        countdownInterval: null, countdownSecs: 0,
+    // --- SCHIMBARE SKIN ---
+    function changeSkin(skinClass) {
+        // Ștergem skin-ul vechi de pe body și îl adăugăm pe cel nou
+        document.body.className = skinClass;
+    }
+
+    // --- DICȚIONAR MULTILINGV (i18n) ---
+    const i18n = {
+        ro: {
+            titleLobby: "// IDENTIFICARE", lblCallsign: "CALLSIGN (Nume jucător)", btnConnect: "CONECTARE LA REȚEA",
+            titleArena: "// ARENĂ", btnCreate: "[ + ] CREAZĂ ARENĂ", btnJoin: "[ → ] ALĂTURĂ-TE", btnReady: "[ ✓ ] SUNT READY",
+            statusWaitPeer: "Așteaptă un adversar, apoi fă Ready.", statusReadyGo: "Fă Ready când ești pregătit.", statusPrep: "Se pregătesc containerele...",
+            titleList: "// ARENE DISPONIBILE", emptyList: "Nicio arenă activă.", btnRefresh: "[ ↻ ] REFRESH",
+            phaseSetup: "◼ SETUP PHASE", phaseInfil: "⚔ INFILTRATE PHASE",
+            lblSysYou: "SYS INTEGRITY (YOU)", lblSysEnemy: "SYS INTEGRITY (ENEMY)", termTitle: "CMD :: SECURE TERMINAL",
+            notifSetup: "FAZA SETUP: ASCUNDE PAROLA ÎN CONTAINER", notifInfil: "FAZA INFILTRATE: ATACĂ INAMICUL", notifOnlyInfil: "DOAR IN FAZA INFILTRATE!",
+            winTitle: "☢ VICTORIE", loseTitle: "✗ ÎNFRÂNGERE", btnRestart: "[ ↺ ] JOACĂ DIN NOU",
+            abStrikeEf: "TERMINAL INAMIC BLOCAT - 5s", abScrambleEf: "LS/FIND INAMIC BRUIAT - 15s", abShieldEf: "SCUT ACTIVAT", abSonarEf: "PING TRIMIS",
+            wsOnline: "ONLINE", wsOffline: "OFFLINE", errName: "Introdu un nume!", hostText: "HOST:", guestText: "GUEST:", waitText: "așteaptă..."
+        },
+        en: {
+            titleLobby: "// IDENTIFICATION", lblCallsign: "CALLSIGN (Player Name)", btnConnect: "CONNECT TO NETWORK",
+            titleArena: "// ARENA", btnCreate: "[ + ] CREATE ARENA", btnJoin: "[ → ] JOIN SELECTED", btnReady: "[ ✓ ] I AM READY",
+            statusWaitPeer: "Wait for an opponent, then press Ready.", statusReadyGo: "Press Ready when you are prepared.", statusPrep: "Preparing containers...",
+            titleList: "// AVAILABLE ARENAS", emptyList: "No active arenas.", btnRefresh: "[ ↻ ] REFRESH",
+            phaseSetup: "◼ SETUP PHASE", phaseInfil: "⚔ INFILTRATE PHASE",
+            lblSysYou: "SYS INTEGRITY (YOU)", lblSysEnemy: "SYS INTEGRITY (ENEMY)", termTitle: "CMD :: SECURE TERMINAL",
+            notifSetup: "SETUP PHASE: HIDE YOUR PASSWORD", notifInfil: "INFILTRATE PHASE: ATTACK THE ENEMY", notifOnlyInfil: "ONLY IN INFILTRATE PHASE!",
+            winTitle: "☢ VICTORY", loseTitle: "✗ DEFEAT", btnRestart: "[ ↺ ] PLAY AGAIN",
+            abStrikeEf: "ENEMY TERMINAL LOCKED - 5s", abScrambleEf: "ENEMY LS/FIND SCRAMBLED - 15s", abShieldEf: "SHIELD ACTIVATED", abSonarEf: "PING SENT",
+            wsOnline: "ONLINE", wsOffline: "OFFLINE", errName: "Enter a callsign!", hostText: "HOST:", guestText: "GUEST:", waitText: "waiting..."
+        }
     };
 
-    // ── Log ───────────────────────────────────────────────────────────────────────
-    function log(msg, type='info') {
-        const t = document.getElementById('terminal');
-        const ts = new Date().toLocaleTimeString('ro',{hour12:false});
-        const line = document.createElement('span');
-        line.className = `log-${type} fadein`;
-        line.textContent = `[${ts}] ${msg}`;
-        t.appendChild(line);
-        t.appendChild(document.createElement('br'));
-        t.scrollTop = t.scrollHeight;
-    }
-    function logCmd(cmd) {
-        const t = document.getElementById('terminal');
-        const el = document.createElement('span');
-        el.className = 'log-cmd fadein';
-        el.textContent = cmd;
-        el.title = 'Click pentru a copia';
-        el.onclick = () => { navigator.clipboard.writeText(cmd); log('Copiat în clipboard.','success'); };
-        t.appendChild(el);
-        t.scrollTop = t.scrollHeight;
+    let currentLang = 'ro';
+    function changeLang(lang) {
+        currentLang = lang; const t = i18n[lang];
+        document.getElementById('lbl-ident').textContent = t.titleLobby;
+        document.getElementById('lbl-callsign').textContent = t.lblCallsign;
+        document.getElementById('btn-ident').textContent = t.btnConnect;
+        document.getElementById('lbl-arena').textContent = t.titleArena;
+        document.getElementById('btn-create').textContent = t.btnCreate;
+        document.getElementById('btn-join').textContent = t.btnJoin;
+        document.getElementById('btn-ready').textContent = t.btnReady;
+        document.getElementById('lbl-list').textContent = t.titleList;
+        document.getElementById('btn-refresh').textContent = t.btnRefresh;
+        document.getElementById('lbl-sys-you').textContent = t.lblSysYou;
+        document.getElementById('lbl-sys-enemy').textContent = t.lblSysEnemy;
+        document.getElementById('lbl-term-title').textContent = t.termTitle;
+        document.getElementById('btn-restart').textContent = t.btnRestart;
+
+        if(document.querySelector('.empty-list')) document.querySelector('.empty-list').textContent = t.emptyList;
+        if(state.phase === 'setup') document.getElementById('phase-name').textContent = t.phaseSetup;
+        if(state.phase === 'infiltrate') document.getElementById('phase-name').textContent = t.phaseInfil;
+        if(document.getElementById('ws-status').textContent === i18n['ro'].wsOnline || document.getElementById('ws-status').textContent === i18n['en'].wsOnline) { document.getElementById('ws-status').textContent = t.wsOnline; }
+
+        ABILITIES[0].effect = t.abStrikeEf; ABILITIES[1].effect = t.abScrambleEf;
+        ABILITIES[2].effect = t.abShieldEf; ABILITIES[3].effect = t.abSonarEf;
+        refreshArenas();
     }
 
-    // ── WebSocket ─────────────────────────────────────────────────────────────────
+    // --- STARE JOC ---
+    const state = { playerID: null, arenaID: null, role: null, phase: null, selectedArenaID: null, ws: null, countdownInterval: null, countdownSecs: 0 };
+    let hpPlayer = 100, hpEnemy = 100;
+
+    // --- LOBBY LOGIC ---
     function connectWS(playerID) {
         const proto = location.protocol==='https:'?'wss':'ws';
         const ws = new WebSocket(`${proto}://${location.host}/ws?player_id=${encodeURIComponent(playerID)}`);
         state.ws = ws;
-        ws.onopen = () => {
-            document.getElementById('ws-status').textContent = 'ONLINE';
-            document.getElementById('ws-status').style.color = 'var(--green)';
-            log('WebSocket conectat.','success');
-        };
-        ws.onclose = () => {
-            document.getElementById('ws-status').textContent = 'OFFLINE';
-            document.getElementById('ws-status').style.color = 'var(--red)';
-            setTimeout(()=>connectWS(playerID), 3000);
-        };
-        ws.onmessage = ev => {
-            try { handleWSEvent(JSON.parse(ev.data)); } catch(e) {}
-        };
+        ws.onopen = () => { document.getElementById('ws-status').textContent = i18n[currentLang].wsOnline; document.getElementById('ws-status').style.color = 'var(--green)'; };
+        ws.onclose = () => { document.getElementById('ws-status').textContent = i18n[currentLang].wsOffline; document.getElementById('ws-status').style.color = 'var(--red)'; setTimeout(()=>connectWS(playerID), 3000); };
+        ws.onmessage = ev => { try { handleWSEvent(JSON.parse(ev.data)); } catch(e) {} };
     }
 
     function handleWSEvent(ev) {
         switch(ev.type) {
-            case 'arena_list':   renderArenaList(ev.payload); break;
-            case 'game_start':   onGameStart(ev.payload); break;
+            case 'arena_list': renderArenaList(ev.payload); break;
+            case 'game_start': onGameStart(ev.payload); break;
             case 'phase_change': onPhaseChange(ev.payload); break;
-            case 'game_over':    onGameOver(ev.payload); break;
+            case 'game_over': onGameOver(ev.payload); break;
         }
     }
 
-    // ── Arena list ────────────────────────────────────────────────────────────────
     function renderArenaList(arenas) {
         const el = document.getElementById('arena-list');
-        if (!arenas||!arenas.length) {
-            el.innerHTML='<div class="empty-list">Nicio arenă activă.</div>'; return;
-        }
+        if (!arenas||!arenas.length) { el.innerHTML=`<div class="empty-list">${i18n[currentLang].emptyList}</div>`; return; }
         el.innerHTML='';
         arenas.forEach(a => {
             const d = document.createElement('div');
             d.className='arena-item'+(a.id===state.selectedArenaID?' selected':'');
-            const guest = a.has_guest
-                ? `<span style="color:var(--green-dim)">${a.guest_id}</span>`
-                : '<span style="color:var(--text-dim)">asteapta...</span>';
-            d.innerHTML=`
-      <div>
-        <div class="arena-id">${a.id.slice(0,32)}</div>
-        <div class="arena-players">HOST: <span style="color:var(--green)">${a.host_id}</span> · GUEST: ${guest}</div>
-      </div>
-      <span class="phase-badge phase-${a.phase}">${a.phase}</span>`;
-            d.onclick=()=>selectArena(a.id,d);
+            const guest = a.has_guest ? `<span style="color:var(--green-dim)">${a.guest_id}</span>` : `<span style="color:var(--text-dim)">${i18n[currentLang].waitText}</span>`;
+            d.innerHTML=`<div><div class="arena-id">${a.id.slice(0,32)}</div><div class="arena-players">${i18n[currentLang].hostText} <span style="color:var(--green)">${a.host_id}</span> · ${i18n[currentLang].guestText} ${guest}</div></div>`;
+            d.onclick=()=> { state.selectedArenaID = a.id; document.querySelectorAll('.arena-item').forEach(e=>e.classList.remove('selected')); d.classList.add('selected'); if (state.playerID && !state.arenaID) document.getElementById('btn-join').disabled = false; };
             el.appendChild(d);
         });
     }
 
-    function selectArena(id, el) {
-        state.selectedArenaID = id;
-        document.querySelectorAll('.arena-item').forEach(e=>e.classList.remove('selected'));
-        el.classList.add('selected');
-        if (state.playerID && !state.arenaID)
-            document.getElementById('btn-join').disabled = false;
-        log(`Arenă selectată: ${id.slice(0,24)}...`);
-    }
+    async function refreshArenas() { const r = await fetch('/api/arenas'); renderArenaList(await r.json()); }
 
-    async function refreshArenas() {
-        try {
-            const r = await fetch('/api/arenas');
-            renderArenaList(await r.json());
-        } catch(e) { log('Nu pot prelua arene.','error'); }
-    }
-
-    // ── Identify ──────────────────────────────────────────────────────────────────
     function identify() {
-        const pub = document.getElementById('public-key').value.trim();
-        const id  = document.getElementById('player-id').value.trim().replace(/\s+/g,'_');
-
-        if (!pub) { log('Adaugă cheia publică SSH mai întâi.','error'); return; }
-        if (!id)  { log('Introdu un callsign.','error'); return; }
-
-        // Validare minimă client-side
-        if (!pub.startsWith('ssh-')) {
-            log('Cheia publică trebuie să înceapă cu ssh-ed25519 sau ssh-rsa.','error'); return;
-        }
-
+        const id = document.getElementById('player-id').value.trim().replace(/\s+/g,'_');
+        if (!id) return alert(i18n[currentLang].errName);
         state.playerID = id;
-        state.publicKey = pub;
-
         document.getElementById('current-player').textContent = `>> ${id}`;
-        document.getElementById('player-id').disabled = true;
-        document.getElementById('public-key').disabled = true;
+        document.getElementById('panel-id').style.display = 'none';
         document.getElementById('panel-actions').style.display = 'block';
-
-        log(`Identificat: ${id}`,'success');
-        log('Cheia publică înregistrată local.','success');
         connectWS(id);
     }
 
-    // ── Create / Join ─────────────────────────────────────────────────────────────
     async function createArena() {
-        if (!state.playerID) return;
-        try {
-            const r = await fetch('/api/arena/create',{
-                method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({player_id:state.playerID, public_key:state.publicKey})
-            });
-            if (!r.ok) { log(await r.text(),'error'); return; }
-            const d = await r.json();
-            state.arenaID = d.arena_id; state.role = d.role;
-            log(`Arenă creată. Rol: HOST`,'success');
-            document.getElementById('btn-create').disabled = true;
-            document.getElementById('btn-join').disabled = true;
-            document.getElementById('btn-ready').disabled = false;
-            document.getElementById('ready-status').textContent = 'Așteaptă un adversar, apoi fă Ready.';
-        } catch(e) { log('Eroare la creare.','error'); }
+        const r = await fetch('/api/arena/create',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({player_id:state.playerID}) });
+        const d = await r.json(); state.arenaID = d.arena_id; state.role = d.role;
+        document.getElementById('btn-create').disabled = true; document.getElementById('btn-join').disabled = true;
+        document.getElementById('btn-leave').style.display = 'block';
+        document.getElementById('btn-ready').disabled = false; document.getElementById('ready-status').textContent = i18n[currentLang].statusWaitPeer;
     }
 
     async function joinSelected() {
-        if (!state.selectedArenaID) return;
+        const r = await fetch('/api/arena/join',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({arena_id:state.selectedArenaID, player_id:state.playerID}) });
+        const d = await r.json(); state.arenaID = d.arena_id; state.role = d.role;
+        document.getElementById('btn-create').disabled = true; document.getElementById('btn-join').disabled = true;
+        document.getElementById('btn-leave').style.display = 'block';
+        document.getElementById('btn-ready').disabled = false; document.getElementById('ready-status').textContent = i18n[currentLang].statusReadyGo;
+    }
+
+    async function leaveArena() {
+        if (!state.arenaID) return;
         try {
-            const r = await fetch('/api/arena/join',{
-                method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({arena_id:state.selectedArenaID, player_id:state.playerID, public_key:state.publicKey})
-            });
-            if (!r.ok) { log(await r.text(),'error'); return; }
-            const d = await r.json();
-            state.arenaID = d.arena_id; state.role = d.role;
-            log(`Te-ai alăturat ca GUEST.`,'success');
-            document.getElementById('btn-create').disabled = true;
-            document.getElementById('btn-join').disabled = true;
-            document.getElementById('btn-ready').disabled = false;
-            document.getElementById('ready-status').textContent = 'Fă Ready când ești pregătit.';
-        } catch(e) { log('Eroare la alăturare.','error'); }
+            await fetch('/api/arena/leave', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ arena_id: state.arenaID, player_id: state.playerID }) });
+            state.arenaID = null; state.role = null;
+            document.getElementById('btn-leave').style.display = 'none';
+            document.getElementById('btn-ready').disabled = true;
+            document.getElementById('btn-create').disabled = false;
+            if (state.selectedArenaID) document.getElementById('btn-join').disabled = false;
+            document.getElementById('ready-status').textContent = '';
+        } catch(e) { console.error(e); }
     }
 
     async function setReady() {
-        try {
-            const r = await fetch('/api/arena/ready',{
-                method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({arena_id:state.arenaID, player_id:state.playerID})
-            });
-            if (!r.ok) { log(await r.text(),'error'); return; }
-            document.getElementById('btn-ready').disabled = true;
-            const rs = document.getElementById('ready-status');
-            rs.textContent = '✓ READY — se pornesc containerele...';
-            rs.style.color = 'var(--green)';
-            log('Ești ready. Se așteaptă adversarul...','success');
-        } catch(e) { log('Eroare la ready.','error'); }
+        await fetch('/api/arena/ready',{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({arena_id:state.arenaID, player_id:state.playerID}) });
+        document.getElementById('btn-ready').disabled = true;
+        document.getElementById('ready-status').textContent = i18n[currentLang].statusPrep;
     }
 
-    // ── Game events ───────────────────────────────────────────────────────────────
+    // --- GAME LOGIC ---
+    let term, termFitAddon, termSocket;
+    function initTerminal(arenaID, playerID) {
+        if (term) term.dispose();
+        term = new Terminal({ cursorBlink: true, fontFamily: '"Share Tech Mono", monospace', fontSize: 13, theme: { background: 'transparent', foreground: '#00ff41', cursor: '#00ff41' }});
+        termFitAddon = new FitAddon.FitAddon(); term.loadAddon(termFitAddon);
+
+        const termContainer = document.getElementById('term-body');
+        termContainer.innerHTML = ''; term.open(termContainer); termFitAddon.fit();
+
+        term.attachCustomKeyEventHandler((e) => {
+            if (e.ctrlKey && e.code === 'KeyC' && e.type === 'keydown') {
+                if (term.hasSelection()) { navigator.clipboard.writeText(term.getSelection()); term.clearSelection(); return false; }
+                return true;
+            }
+            if (e.ctrlKey && e.code === 'KeyV' && e.type === 'keydown') return false;
+            return true;
+        });
+
+        const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+        termSocket = new WebSocket(`${proto}://${location.host}/ws/terminal?arena_id=${arenaID}&player_id=${playerID}`);
+        termSocket.onmessage = (event) => term.write(event.data);
+        term.onData((data) => { if (termSocket.readyState === WebSocket.OPEN) termSocket.send(data); });
+    }
+
     function onGameStart(p) {
         state.phase = p.phase;
-        document.getElementById('game-section').style.display = 'block';
-        document.getElementById('ssh-command').textContent = p.ssh_command;
-        setPhaseUI('setup','SETUP — ASCUNDE FIȘIERUL',
-            `Ai ${p.setup_seconds}s să ascunzi nuclearcodes.txt. Creează capcane, directoare false, alias-uri.`);
+        document.getElementById('lobby-section').style.display = 'none';
+        document.getElementById('arena').style.display = 'block';
+        document.getElementById('phase-name').textContent = i18n[currentLang].phaseSetup;
         startCountdown(p.setup_seconds);
-
-        log('=== JOC ÎNCEPUT ===','success');
-        log(`Rol: ${p.role.toUpperCase()} · Faza: SETUP`,'info');
-        log('Conectează-te la containerul TĂU (îl aperi):','info');
-        logCmd(p.ssh_command);
-        log('Cheia ta privată se află la: ~/.ssh/cmd_key','warn');
+        initTerminal(state.arenaID, state.playerID);
+        showNotif(i18n[currentLang].notifSetup);
     }
 
     function onPhaseChange(p) {
         if (p.phase !== 'infiltrate') return;
         state.phase = 'infiltrate';
         clearInterval(state.countdownInterval);
-        document.getElementById('ssh-command').textContent = p.ssh_command;
+        document.getElementById('phase-name').textContent = i18n[currentLang].phaseInfil;
+        document.getElementById('phase-name').style.color = '#C0704A';
         document.getElementById('countdown').textContent = '00:00';
-        setPhaseUI('infiltrate','⚔ INFILTRATE — ATACĂ',
-            'Găsește nuclearcodes.txt și rulează: /bin/nuke_system <parola>');
-        log('=== FAZA INFILTRATE ===','warn');
-        log('Acum te conectezi la containerul ADVERSARULUI:','warn');
-        logCmd(p.ssh_command);
+        showNotif(i18n[currentLang].notifInfil);
+
+        if (termSocket) termSocket.close();
+        setTimeout(() => initTerminal(state.arenaID, state.playerID), 1000);
     }
 
     function onGameOver(p) {
-        clearInterval(state.countdownInterval);
-        const o = document.getElementById('winner-overlay');
-        o.classList.add('show');
-        if (p.you_won) {
-            document.getElementById('winner-title').textContent = '☢ MISSION COMPLETE';
-            document.getElementById('winner-title').className = 'winner-title won';
-            document.getElementById('winner-sub').textContent = 'Ai compromis sistemul adversarului.';
-            log('=== VICTORIE ===','success');
-        } else {
-            document.getElementById('winner-title').textContent = '✗ SISTEM COMPROMIS';
-            document.getElementById('winner-title').className = 'winner-title lost';
-            document.getElementById('winner-sub').textContent = 'Adversarul ți-a găsit parola.';
-            log('=== ÎNFRÂNGERE ===','error');
-        }
-    }
-
-    // ── UI helpers ────────────────────────────────────────────────────────────────
-    function setPhaseUI(cls, label, hint) {
-        const ind = document.getElementById('phase-indicator');
-        ind.textContent = label;
-        ind.className = `phase-indicator pi-${cls}`;
-        document.getElementById('phase-hint').textContent = hint;
+        if (termSocket) termSocket.close();
+        const o = document.getElementById('winner-overlay'); o.classList.add('show');
+        document.getElementById('winner-title').textContent = p.you_won ? i18n[currentLang].winTitle : i18n[currentLang].loseTitle;
+        document.getElementById('winner-title').className = 'winner-title ' + (p.you_won ? 'won' : 'lost');
     }
 
     function startCountdown(secs) {
@@ -545,18 +330,65 @@
         const el = document.getElementById('countdown');
         state.countdownInterval = setInterval(()=>{
             state.countdownSecs--;
-            if (state.countdownSecs <= 0) { clearInterval(state.countdownInterval); el.textContent='00:00'; return; }
-            const m = String(Math.floor(state.countdownSecs/60)).padStart(2,'0');
-            const s = String(state.countdownSecs%60).padStart(2,'0');
-            el.textContent = `${m}:${s}`;
-            if (state.countdownSecs<=15) el.classList.add('danger');
+            if (state.countdownSecs <= 0) { clearInterval(state.countdownInterval); return; }
+            el.textContent = String(Math.floor(state.countdownSecs/60)).padStart(2,'0')+':'+String(state.countdownSecs%60).padStart(2,'0');
         }, 1000);
     }
 
-    function copySSH() {
-        const cmd = document.getElementById('ssh-command').textContent;
-        navigator.clipboard.writeText(cmd).then(()=>log('SSH command copiat.','success'));
+    // --- ABILITIES LOGIC ---
+    const ABILITIES = [ { cd:20, effect:'' }, { cd:30, effect:'' }, { cd:45, effect:'' }, { cd:15, effect:'' } ];
+    const cdTimers = [0,0,0,0];
+
+    setInterval(()=>{
+        cdTimers.forEach((t,i)=>{
+            if (t > 0) {
+                cdTimers[i]--; document.getElementById('cd-'+i).textContent = cdTimers[i];
+                if (cdTimers[i] === 0) document.getElementById('ab-'+i).classList.remove('on-cd');
+            }
+        });
+    }, 1000);
+
+    async function useAbility(i) {
+        if (state.phase !== 'infiltrate') { showNotif(i18n[currentLang].notifOnlyInfil); return; }
+        const ab = document.getElementById('ab-'+i);
+        if (ab.classList.contains('on-cd')) return;
+
+        ab.classList.add('on-cd'); cdTimers[i] = ABILITIES[i].cd;
+        fireStrike(i); showNotif(ABILITIES[i].effect || i18n[currentLang].abStrikeEf);
+
+        await fetch('/api/ability', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ arena_id: state.arenaID, player_id: state.playerID, ability_id: i })
+        });
     }
+
+    function showNotif(msg) { const n = document.getElementById('notif'); n.textContent = msg; n.classList.add('show'); setTimeout(()=>n.classList.remove('show'), 3000); }
+
+    function fireStrike(idx) {
+        const canvas = document.getElementById('strike-canvas'); const ctx = canvas.getContext('2d');
+        const arena = document.getElementById('arena'); canvas.width = arena.offsetWidth; canvas.height = arena.offsetHeight;
+        const ab = document.getElementById('ab-'+idx).getBoundingClientRect(); const ar = arena.getBoundingClientRect();
+        const sx = ab.left - ar.left + ab.width/2; const sy = ab.top - ar.top + ab.height/2;
+        const tx = arena.offsetWidth * 0.83; const ty = arena.offsetHeight * 0.42;
+        const col = ['#C0A050','#C0704A','#4A8C42','#50A0C0'][idx];
+        let t = 0;
+        const interval = setInterval(()=>{
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            t++; const prog = t/30;
+            const cx = sx + (tx-sx)*prog; const cy = sy + (ty-sy)*prog - Math.sin(prog*Math.PI)*80;
+            ctx.beginPath(); ctx.arc(cx,cy,4,0,Math.PI*2); ctx.fillStyle = col; ctx.fill();
+            if (t >= 30) { clearInterval(interval); ctx.clearRect(0,0,canvas.width,canvas.height); }
+        }, 16);
+    }
+
+    // Drag Terminal
+    (function(){
+        const win = document.getElementById('terminal-win'), handle = document.getElementById('term-drag');
+        let dragging=false, ox=0, oy=0;
+        handle.addEventListener('mousedown', e => { dragging=true; const r=win.getBoundingClientRect(); ox=e.clientX-r.left; oy=e.clientY-r.top; });
+        document.addEventListener('mousemove', e => { if (!dragging) return; const ar=document.getElementById('arena').getBoundingClientRect(); win.style.left = Math.max(0,Math.min(ar.width-win.offsetWidth, e.clientX-ar.left-ox))+'px'; win.style.top = Math.max(32,Math.min(ar.height-win.offsetHeight-80, e.clientY-ar.top-oy))+'px'; });
+        document.addEventListener('mouseup', ()=>dragging=false);
+    })();
 </script>
 </body>
 </html>

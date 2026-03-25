@@ -18,11 +18,9 @@ const (
 	PhaseFinished   Phase = "finished"
 )
 
-// Player — cheia privată nu mai există pe server
 type Player struct {
 	ID          string
 	Role        PlayerRole
-	PublicKey   string // trimisă de jucător din browser
 	ContainerID string
 	SSHPort     int
 	Ready       bool

@@ -23,8 +23,9 @@ const (
 )
 
 type Manager struct {
-	docker *client.Client
-	arenas map[string]*Arena
+	docker     *client.Client
+	arenas     map[string]*Arena
+	MasterKeys *SSHKeyPair
 }
 
 func NewManager() (*Manager, error) {
@@ -32,9 +33,16 @@ func NewManager() (*Manager, error) {
 	if err != nil {
 		return nil, fmt.Errorf("nu mă pot conecta la Docker: %w", err)
 	}
+
+	masterKeys, err := GenerateSSHKeyPair()
+	if err != nil {
+		return nil, fmt.Errorf("eroare generare chei master: %w", err)
+	}
+
 	return &Manager{
-		docker: cli,
-		arenas: make(map[string]*Arena),
+		docker:     cli,
+		arenas:     make(map[string]*Arena),
+		MasterKeys: masterKeys,
 	}, nil
 }
 
@@ -55,24 +63,15 @@ func (m *Manager) ListArenas() []ArenaView {
 	return views
 }
 
-// CreateArena — jucătorul trimite și cheia sa publică
-func (m *Manager) CreateArena(hostPlayerID, hostPublicKey string) (*Arena, error) {
-	if err := validatePublicKey(hostPublicKey); err != nil {
-		return nil, fmt.Errorf("cheie publică invalidă: %w", err)
-	}
+func (m *Manager) CreateArena(hostPlayerID string) (*Arena, error) {
 	arenaID := generateID("arena")
 	a := NewArena(arenaID, hostPlayerID)
-	a.Host.PublicKey = hostPublicKey
 	m.arenas[arenaID] = a
 	log.Printf("[Arena %s] Creată de %s", arenaID, hostPlayerID)
 	return a, nil
 }
 
-// JoinArena — guest-ul trimite și cheia sa publică
-func (m *Manager) JoinArena(arenaID, guestPlayerID, guestPublicKey string) (*Arena, error) {
-	if err := validatePublicKey(guestPublicKey); err != nil {
-		return nil, fmt.Errorf("cheie publică invalidă: %w", err)
-	}
+func (m *Manager) JoinArena(arenaID, guestPlayerID string) (*Arena, error) {
 	a, ok := m.arenas[arenaID]
 	if !ok {
 		return nil, fmt.Errorf("arena %s nu există", arenaID)
@@ -84,7 +83,6 @@ func (m *Manager) JoinArena(arenaID, guestPlayerID, guestPublicKey string) (*Are
 		return nil, fmt.Errorf("arena %s este plină", arenaID)
 	}
 	a.JoinGuest(guestPlayerID)
-	a.Guest.PublicKey = guestPublicKey
 	log.Printf("[Arena %s] %s s-a alăturat", arenaID, guestPlayerID)
 	return a, nil
 }
@@ -113,15 +111,14 @@ func (m *Manager) SetReady(arenaID, playerID string) (*Arena, error) {
 func (m *Manager) startContainers(a *Arena) error {
 	log.Printf("[Arena %s] Pornesc containerele...", a.ID)
 
-	// Folosim cheile publice ale jucătorilor — serverul nu generează nimic
-	hostPort, hostContainerID, err := m.spawnContainer(a.ID, "host", a.Host.PublicKey)
+	hostPort, hostContainerID, err := m.spawnContainer(a.ID, "host")
 	if err != nil {
 		return fmt.Errorf("eroare container host: %w", err)
 	}
 	a.Host.ContainerID = hostContainerID
 	a.Host.SSHPort = hostPort
 
-	guestPort, guestContainerID, err := m.spawnContainer(a.ID, "guest", a.Guest.PublicKey)
+	guestPort, guestContainerID, err := m.spawnContainer(a.ID, "guest")
 	if err != nil {
 		_ = m.docker.ContainerRemove(context.Background(), hostContainerID, types.ContainerRemoveOptions{Force: true})
 		return fmt.Errorf("eroare container guest: %w", err)
@@ -145,16 +142,19 @@ func (m *Manager) startContainers(a *Arena) error {
 	return nil
 }
 
-func (m *Manager) spawnContainer(arenaID, role, publicKey string) (int, string, error) {
+func (m *Manager) spawnContainer(arenaID, role string) (int, string, error) {
 	ctx := context.Background()
 	sshPort := rand.Intn(10000) + 30000
+
+	// Acum injectăm DOAR cheia serverului, jucătorul se conectează prin proxy-ul web
+	serverKey := m.MasterKeys.PublicKey
 
 	resp, err := m.docker.ContainerCreate(
 		ctx,
 		&container.Config{
 			Image: ArenaImage,
 			Env: []string{
-				fmt.Sprintf("PLAYER_PUBLIC_KEY=%s", publicKey),
+				fmt.Sprintf("PLAYER_PUBLIC_KEY=%s", serverKey),
 				fmt.Sprintf("ARENA_ID=%s", arenaID),
 				fmt.Sprintf("PLAYER_ROLE=%s", role),
 			},
@@ -202,10 +202,8 @@ func waitForSSH(host string, port int, timeout time.Duration) error {
 }
 
 func (m *Manager) runSetupTimer(a *Arena) {
-	log.Printf("[Arena %s] Setup — %v", a.ID, a.SetupDuration)
 	time.Sleep(a.SetupDuration)
 	if a.Phase == PhaseSetup {
-		log.Printf("[Arena %s] Tranziție → Infiltrate", a.ID)
 		a.Phase = PhaseInfiltrate
 	}
 }
@@ -264,7 +262,6 @@ func (m *Manager) checkNukeFile(containerID string) bool {
 }
 
 func (m *Manager) cleanup(a *Arena) {
-	log.Printf("[Arena %s] Cleanup", a.ID)
 	ctx := context.Background()
 	opts := types.ContainerRemoveOptions{Force: true}
 	_ = m.docker.ContainerRemove(ctx, a.Host.ContainerID, opts)
@@ -274,4 +271,29 @@ func (m *Manager) cleanup(a *Arena) {
 
 func generateID(prefix string) string {
 	return fmt.Sprintf("%s-%d", prefix, time.Now().UnixNano())
+}
+
+// LeaveArena permite unui jucător să iasă dintr-o arenă care nu a început încă
+func (m *Manager) LeaveArena(arenaID, playerID string) error {
+	a, ok := m.arenas[arenaID]
+	if !ok {
+		return fmt.Errorf("arena nu există")
+	}
+	if a.Phase != PhaseWaiting {
+		return fmt.Errorf("meciul este deja în curs, nu mai poți părăsi arena")
+	}
+
+	if a.Host != nil && a.Host.ID == playerID {
+		// Dacă Host-ul iese, ștergem arena cu totul
+		delete(m.arenas, arenaID)
+		log.Printf("[Arena %s] Host-ul %s a ieșit. Arena a fost ștearsă.", arenaID, playerID)
+	} else if a.Guest != nil && a.Guest.ID == playerID {
+		// Dacă Guest-ul iese, doar eliberăm locul
+		a.Guest = nil
+		log.Printf("[Arena %s] Guest-ul %s a ieșit.", arenaID, playerID)
+	} else {
+		return fmt.Errorf("nu ești în această arenă")
+	}
+
+	return nil
 }

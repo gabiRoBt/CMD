@@ -1,11 +1,10 @@
 package main
 
 import (
+	"CMD/arena"
 	"fmt"
 	"log"
 	"os"
-
-	"CMD/arena"
 )
 
 func main() {

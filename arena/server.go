@@ -39,10 +39,58 @@ func (s *Server) Start(port int) error {
 	mux.HandleFunc("/api/arena/join", s.handleJoinArena)
 	mux.HandleFunc("/api/arena/ready", s.handleSetReady)
 	mux.HandleFunc("/ws", s.handleWS)
+	mux.HandleFunc("/ws/terminal", s.handleWSTerminal)
 	mux.HandleFunc("/", s.handleStatic)
+	mux.HandleFunc("/api/arena/leave", s.handleLeaveArena)
 
 	log.Printf("[Server] Pornit pe :%d", port)
 	return http.ListenAndServe(fmt.Sprintf(":%d", port), mux)
+}
+
+func (s *Server) handleWSTerminal(w http.ResponseWriter, r *http.Request) {
+	arenaID := r.URL.Query().Get("arena_id")
+	playerID := r.URL.Query().Get("player_id")
+
+	if arenaID == "" || playerID == "" {
+		http.Error(w, "Lipsesc parametrii", 400)
+		return
+	}
+
+	a, ok := s.manager.arenas[arenaID]
+	if !ok {
+		http.Error(w, "Arena nu exista", 404)
+		return
+	}
+
+	var targetPort int
+	if a.Phase == PhaseSetup {
+		if playerID == a.Host.ID {
+			targetPort = a.Host.SSHPort
+		} else {
+			targetPort = a.Guest.SSHPort
+		}
+	} else if a.Phase == PhaseInfiltrate {
+		if playerID == a.Host.ID {
+			targetPort = a.Guest.SSHPort
+		} else {
+			targetPort = a.Host.SSHPort
+		}
+	} else {
+		http.Error(w, "Terminal indisponibil in aceasta faza", 403)
+		return
+	}
+
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Printf("Eroare upgrade WS terminal: %v", err)
+		return
+	}
+
+	targetAddr := fmt.Sprintf("%s:%d", s.serverIP, targetPort)
+	log.Printf("[Terminal] %s se conecteaza la %s", playerID, targetAddr)
+
+	masterPrivKey := []byte(s.manager.MasterKeys.PrivateKeyPEM)
+	StartSSHProxy(conn, targetAddr, masterPrivKey)
 }
 
 func (s *Server) handleArenas(w http.ResponseWriter, r *http.Request) {
@@ -55,14 +103,13 @@ func (s *Server) handleCreateArena(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req struct {
-		PlayerID  string `json:"player_id"`
-		PublicKey string `json:"public_key"`
+		PlayerID string `json:"player_id"` // Nu mai cerem PublicKey!
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.PlayerID == "" {
-		http.Error(w, "player_id și public_key sunt obligatorii", 400)
+		http.Error(w, "player_id este obligatoriu", 400)
 		return
 	}
-	a, err := s.manager.CreateArena(req.PlayerID, req.PublicKey)
+	a, err := s.manager.CreateArena(req.PlayerID)
 	if err != nil {
 		http.Error(w, err.Error(), 400)
 		return
@@ -77,15 +124,14 @@ func (s *Server) handleJoinArena(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req struct {
-		ArenaID   string `json:"arena_id"`
-		PlayerID  string `json:"player_id"`
-		PublicKey string `json:"public_key"`
+		ArenaID  string `json:"arena_id"`
+		PlayerID string `json:"player_id"` // Nu mai cerem PublicKey!
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "JSON invalid", 400)
 		return
 	}
-	_, err := s.manager.JoinArena(req.ArenaID, req.PlayerID, req.PublicKey)
+	_, err := s.manager.JoinArena(req.ArenaID, req.PlayerID)
 	if err != nil {
 		http.Error(w, err.Error(), 400)
 		return
@@ -116,6 +162,10 @@ func (s *Server) handleSetReady(w http.ResponseWriter, r *http.Request) {
 		s.notifyGameStart(a)
 		s.manager.WatchForWinner(a, func(winner *Player) {
 			s.notifyGameOver(a, winner)
+			// Așteptăm 1 secundă ca manager.go să șteargă arena din memorie, apoi reîmprospătăm listele
+			time.AfterFunc(1*time.Second, func() {
+				s.broadcastArenaList()
+			})
 		})
 		go s.watchPhaseTransition(a)
 	}
@@ -155,24 +205,23 @@ func (s *Server) handleStatic(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) notifyGameStart(a *Arena) {
+	// Trimitem doar faza și portul (opțional), nu mai trimitem comenzi text pentru copy-paste
 	s.hub.SendToPlayer(a.Host.ID, WSEvent{
 		Type: EventGameStart,
 		Payload: GameStartPayload{
-			ArenaID:    a.ID,
-			SSHCommand: s.sshCmd(a.Host.SSHPort),
-			Role:       string(RoleHost),
-			Phase:      string(PhaseSetup),
-			SetupSecs:  int(a.SetupDuration.Seconds()),
+			ArenaID:   a.ID,
+			Role:      string(RoleHost),
+			Phase:     string(PhaseSetup),
+			SetupSecs: int(a.SetupDuration.Seconds()),
 		},
 	})
 	s.hub.SendToPlayer(a.Guest.ID, WSEvent{
 		Type: EventGameStart,
 		Payload: GameStartPayload{
-			ArenaID:    a.ID,
-			SSHCommand: s.sshCmd(a.Guest.SSHPort),
-			Role:       string(RoleGuest),
-			Phase:      string(PhaseSetup),
-			SetupSecs:  int(a.SetupDuration.Seconds()),
+			ArenaID:   a.ID,
+			Role:      string(RoleGuest),
+			Phase:     string(PhaseSetup),
+			SetupSecs: int(a.SetupDuration.Seconds()),
 		},
 	})
 }
@@ -185,19 +234,17 @@ func (s *Server) watchPhaseTransition(a *Arena) {
 	s.hub.SendToPlayer(a.Host.ID, WSEvent{
 		Type: EventPhaseChange,
 		Payload: PhaseChangePayload{
-			ArenaID:    a.ID,
-			Phase:      string(PhaseInfiltrate),
-			SSHCommand: s.sshCmd(a.Guest.SSHPort),
-			MessageRO:  "⚔️ Setup terminat! Atacați containerul adversarului.",
+			ArenaID:   a.ID,
+			Phase:     string(PhaseInfiltrate),
+			MessageRO: "⚔️ Setup terminat! Atacați containerul adversarului.",
 		},
 	})
 	s.hub.SendToPlayer(a.Guest.ID, WSEvent{
 		Type: EventPhaseChange,
 		Payload: PhaseChangePayload{
-			ArenaID:    a.ID,
-			Phase:      string(PhaseInfiltrate),
-			SSHCommand: s.sshCmd(a.Host.SSHPort),
-			MessageRO:  "⚔️ Setup terminat! Atacați containerul adversarului.",
+			ArenaID:   a.ID,
+			Phase:     string(PhaseInfiltrate),
+			MessageRO: "⚔️ Setup terminat! Atacați containerul adversarului.",
 		},
 	})
 }
@@ -220,11 +267,30 @@ func (s *Server) broadcastArenaList() {
 	s.hub.Broadcast(WSEvent{Type: EventArenaList, Payload: s.manager.ListArenas()})
 }
 
-func (s *Server) sshCmd(port int) string {
-	return fmt.Sprintf("ssh player@%s -p %d -i ~/.ssh/cmd_key", s.serverIP, port)
-}
-
 func writeJSON(w http.ResponseWriter, v interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(v)
+}
+
+func (s *Server) handleLeaveArena(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method Not Allowed", 405)
+		return
+	}
+	var req struct {
+		ArenaID  string `json:"arena_id"`
+		PlayerID string `json:"player_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "JSON invalid", 400)
+		return
+	}
+
+	if err := s.manager.LeaveArena(req.ArenaID, req.PlayerID); err != nil {
+		http.Error(w, err.Error(), 400)
+		return
+	}
+
+	s.broadcastArenaList() // Anunțăm toți jucătorii că arena s-a modificat/șters
+	writeJSON(w, map[string]string{"status": "ok"})
 }
