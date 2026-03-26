@@ -107,3 +107,83 @@ body.skin-wasteland #base-sprite-enemy { background: #3e2723; border-radius: 50%
 .winner-title { font-family:'Orbitron',monospace; font-size:2.8rem; font-weight:900; letter-spacing:.3em; margin-bottom:.8rem; }
 .won { color:var(--green); text-shadow:0 0 40px var(--green),0 0 80px var(--green-dim); }
 .lost { color:var(--red); text-shadow:0 0 40px var(--red); }
+
+/* ── BACKGROUNDS (Cer și Nisip) ── */
+.top-band {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 40%; /* Cerul ocupă 40% */
+  background: url('frontend/public/assets/ceata.jpeg') repeat-x; /* Se repetă stânga-dreapta */
+  background-size: auto 100%;
+  z-index: 1;
+}
+
+.band-separator {
+  position: absolute;
+  top: 40%; left: 0; right: 0;
+  height: 4px;
+  background: #2a1f1a;
+  z-index: 2;
+}
+
+.bottom-band {
+  position: absolute;
+  top: 40%; bottom: 0; left: 0; right: 0;
+  /* Nisipul se repetă pe ambele axe pentru a acoperi tot pământul */
+  background: url('/assets/nisip.jpeg') repeat;
+  z-index: 1;
+}
+
+/* ── CUTIILE ELEMENTELOR (Non-Stretch) ── */
+.element-box {
+  position: absolute;
+  /* Pentru design/debugging, îi punem un border cum ai desenat tu */
+  border: 3px solid #1a1a1a;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Imaginile din interiorul cutiilor */
+.element-box img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain; /* Magia care previne stretching-ul! */
+}
+
+/* Baze (Tipi) - Același procentaj față de margine */
+.base-box {
+  bottom: 15%; /* Stau pe nisip */
+  width: 20%;  /* Se scalează odată cu arena, dar își păstrează forma */
+  aspect-ratio: 1 / 1; /* Păstrează cutia perfect pătrată */
+}
+.left-base { left: 8%; }
+.right-base { right: 8%; }
+
+.mirrored {
+  transform: scaleX(-1); /* Oglindește imaginea */
+}
+
+/* Elemente de decor centru */
+.cactus-box {
+  bottom: 5%;
+  left: 35%;
+  width: 8%;
+  aspect-ratio: 1 / 2.5; /* Formă înaltă */
+}
+
+.snake-box {
+  bottom: 5%;
+  left: 48%;
+  width: 8%;
+  aspect-ratio: 1.2 / 1; /* Formă lătăreață */
+}
+
+.empty-box {
+  bottom: 5%;
+  left: 60%;
+  width: 12%;
+  aspect-ratio: 3 / 1;
+  background: rgba(0,0,0,0.2);
+}

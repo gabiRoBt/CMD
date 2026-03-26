@@ -238,6 +238,99 @@ export default function Arena({ t, arenaID, playerID, role, phase, setupSecs }) 
 
     return (
         <div id="arena" ref={arenaRef} style={{ display: 'block' }}>
+
+            {/* 1. FUNDALURILE SEAMLESS */}
+            <div className="top-band"></div>
+            <div className="band-separator"></div>
+            <div className="bottom-band"></div>
+
+            {/* 2. ELEMENTELE TALE DIN IMAGINE */}
+            {/* Baza stânga */}
+            <div className="element-box base-box left-base">
+                <img src="/assets/baza.jpeg" alt="Baza Player" />
+            </div>
+
+            {/* Cactus */}
+            <div className="element-box cactus-box">
+                <img src="/assets/cactus.jpeg" alt="Cactus" />
+            </div>
+
+            {/* Șarpe */}
+            <div className="element-box snake-box">
+                <img src="/assets/sarpe.jpeg" alt="Sarpe" />
+            </div>
+
+            {/* Cutia goală */}
+            <div className="element-box empty-box"></div>
+
+            {/* Baza dreapta (OGLINDITĂ) */}
+            <div className="element-box base-box right-base">
+                <img src="/assets/baza.jpeg" alt="Baza Inamic" className="mirrored" />
+            </div>
+
+            {/* 3. CANVAS PENTRU ANIMAȚII RACHETE (Rămâne neschimbat) */}
+            <canvas id="strike-canvas" ref={canvasRef}></canvas>
+
+            {/* 4. UI-UL JOCULUI (Barele de sus, Terminal, Pouch, etc.) */}
+            <div id="phase-bar">
+                <span className="phase-label">CMD::ARENA</span>
+                <span id="phase-name" style={{ color: phase === 'infiltrate' ? '#C0704A' : '#4A8C42' }}>
+                    {phase === 'infiltrate' ? t.phaseInfil : t.phaseSetup}
+                </span>
+                <span id="countdown" style={{ color: phase === 'infiltrate' ? '#C0704A' : '#C0A050' }}>
+                    {formatTime(countdown)}
+                </span>
+            </div>
+
+            {/* HP BARS */}
+            <div className="hp-bar-wrap" id="hp-player" style={{ zIndex: 100 }}>
+                <span className="hp-label">{t.lblSysYou}</span>
+                <div className="hp-track"><div className="hp-fill" style={{ width: `${hpPlayer}%` }}></div></div>
+            </div>
+            <div className="hp-bar-wrap" id="hp-enemy" style={{ zIndex: 100 }}>
+                <span className="hp-label">{t.lblSysEnemy}</span>
+                <div className="hp-track"><div className="hp-fill" style={{ width: `${hpEnemy}%` }}></div></div>
+            </div>
+
+            {/* TERMINAL */}
+            <div id="terminal-win" ref={termWinRef}>
+                <div className="term-titlebar" id="term-drag-handle">
+                    <div className="term-btns">
+                        <span className="term-btn"></span><span className="term-btn"></span><span className="term-btn" style={{ background: '#4A8C42' }}></span>
+                    </div>
+                    <span>{t.termTitle}</span>
+                </div>
+                <div id="term-body" ref={termBodyRef} style={{ flex: 1, padding: '4px', overflow: 'hidden', background: 'rgba(0,0,0,0.85)' }}></div>
+            </div>
+
+            {/* POUCH (Abilități) */}
+            <div id="pouch" style={{ zIndex: 100 }}>
+                <span className="pouch-label">POUCH</span>
+                {abilitiesInfo.map((ab, idx) => (
+                    <div key={idx} id={`ab-${idx}`} className={`ability ${cds[idx] > 0 ? 'on-cd' : ''}`} onClick={() => useAbility(idx)}>
+                        <span className="ab-icon">{ab.icon}</span>
+                        <span className="ab-name">{ab.name}</span>
+                        <div className="cd-overlay" style={{ opacity: cds[idx] > 0 ? 1 : 0 }}>{cds[idx] > 0 ? cds[idx] : ''}</div>
+                    </div>
+                ))}
+            </div>
+
+            {/* NOTIFICĂRI ȘI GAME OVER */}
+            <div id="notif" className={notif.show ? 'show' : ''} style={{ zIndex: 200 }}>{notif.msg}</div>
+
+            {gameOverInfo && (
+                <div id="winner-overlay" className="show" style={{ display: 'flex' }}>
+                    <div className={`winner-title ${gameOverInfo.won ? 'won' : 'lost'}`}>{gameOverInfo.title}</div>
+                    <div className="winner-sub">{gameOverInfo.won ? "Sistemul inamic a fost distrus." : "Sistemul tău a fost compromis."}</div>
+                    <button className="btn btn-green" style={{ width: 'auto', padding: '.6rem 2rem' }} onClick={() => window.location.reload()}>
+                        {t.btnRestart}
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+    return (
+        <div id="arena" ref={arenaRef} style={{ display: 'block' }}>
             <div id="arena-bg"></div>
             <div className="base-sprite" id="base-sprite-player"></div>
             <div className="base-sprite" id="base-sprite-enemy"></div>

@@ -4,7 +4,6 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
-    // Asta rezolvă eroarea! Permite traficul venit de pe ngrok:
     allowedHosts: true,
     proxy: {
       '/api': {
