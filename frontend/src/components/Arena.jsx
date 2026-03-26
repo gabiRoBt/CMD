@@ -84,7 +84,7 @@ export default function Arena({ t, arenaID, playerID, role, phase, setupSecs }) 
         };
     }, [arenaID, playerID, phase]);
 
-    // 4. ResizeObserver — re-fit terminal la resize
+    // 4. ResizeObserver
     useEffect(() => {
         if (!termWinRef.current) return;
         const ro = new ResizeObserver(() => {
@@ -94,7 +94,7 @@ export default function Arena({ t, arenaID, playerID, role, phase, setupSecs }) 
         return () => ro.disconnect();
     }, []);
 
-    // 5. Drag terminal prin titlebar
+    // 5. Drag terminal
     useEffect(() => {
         const win = termWinRef.current;
         const handle = document.getElementById('term-drag-handle');
@@ -111,7 +111,6 @@ export default function Arena({ t, arenaID, playerID, role, phase, setupSecs }) 
             oy = e.clientY - rect.top;
             e.preventDefault();
         };
-
         const onMouseMove = (e) => {
             if (!dragging) return;
             const ar = arenaRef.current.getBoundingClientRect();
@@ -122,7 +121,6 @@ export default function Arena({ t, arenaID, playerID, role, phase, setupSecs }) 
             win.style.left = `${newX}px`;
             win.style.top = `${newY}px`;
         };
-
         const onMouseUp = () => { dragging = false; };
 
         handle.addEventListener('mousedown', onMouseDown);
@@ -163,19 +161,17 @@ export default function Arena({ t, arenaID, playerID, role, phase, setupSecs }) 
     };
 
     const abilitiesInfo = [
-        { cd: 20, effect: t.abStrikeEf,   icon: '🚀', name: 'Strike',   color: '#C0A050' },
-        { cd: 30, effect: t.abScrambleEf, icon: '🌀', name: 'Scramble', color: '#C0704A' },
-        { cd: 45, effect: t.abShieldEf,   icon: '🛡️', name: 'Shield',   color: '#4A8C42' },
+        { cd: 20, effect: t.abStrikeEf,   icon: '🚀', name: 'STRIKE',   color: '#C0A050' },
+        { cd: 30, effect: t.abScrambleEf, icon: '🌀', name: 'SCRAMBLE', color: '#C0704A' },
+        { cd: 45, effect: t.abShieldEf,   icon: '🛡️', name: 'SHIELD',   color: '#4A8C42' },
     ];
 
     const useAbility = async (idx) => {
         if (phase !== 'infiltrate') { showNotif(t.notifOnlyInfil); return; }
         if (cds[idx] > 0) return;
-
         setCds(prev => { const next = [...prev]; next[idx] = abilitiesInfo[idx].cd; return next; });
         fireStrikeAnimation(idx);
         showNotif(abilitiesInfo[idx].effect);
-
         try {
             await fetch('/api/ability', {
                 method: 'POST',
@@ -185,31 +181,21 @@ export default function Arena({ t, arenaID, playerID, role, phase, setupSecs }) 
         } catch (e) { console.error(e); }
     };
 
-    // Animație din centrul bazei stângi spre centrul bazei drepte
     const fireStrikeAnimation = (idx) => {
         if (!canvasRef.current || !arenaRef.current) return;
         const canvas = canvasRef.current;
         const ctx = canvas.getContext('2d');
         const arena = arenaRef.current;
-
         canvas.width = arena.offsetWidth;
         canvas.height = arena.offsetHeight;
-
-        // Baza stângă: left=8%, width=20% → centru X = 8% + 10% = 18%
-        // bottom=15%, aspect-ratio 1:1, width=20% → height ≈ 20% din lățime
-        // centru Y ≈ bottom 15% + jumătate din înălțimea bazei
         const sx = arena.offsetWidth * 0.18;
         const sy = arena.offsetHeight * 0.73;
-
-        // Baza dreaptă: right=8%, width=20% → centru X = 100% - 8% - 10% = 82%
         const tx = arena.offsetWidth * 0.82;
         const ty = arena.offsetHeight * 0.73;
-
         const col = abilitiesInfo[idx]?.color || '#C0A050';
         const trailPoints = [];
         let tick = 0;
         const totalTicks = 52;
-
         const interval = setInterval(() => {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             tick++;
@@ -217,11 +203,8 @@ export default function Arena({ t, arenaID, playerID, role, phase, setupSecs }) 
             const ease = prog < 0.5 ? 2 * prog * prog : -1 + (4 - 2 * prog) * prog;
             const cx = sx + (tx - sx) * ease;
             const cy = sy + (ty - sy) * ease - Math.sin(prog * Math.PI) * (arena.offsetHeight * 0.40);
-
             trailPoints.push({ x: cx, y: cy });
             if (trailPoints.length > 22) trailPoints.shift();
-
-            // Trail fade
             trailPoints.forEach((p, i) => {
                 const alpha = (i / trailPoints.length) * 0.55;
                 const r = 1.5 + (i / trailPoints.length) * 3.5;
@@ -230,8 +213,6 @@ export default function Arena({ t, arenaID, playerID, role, phase, setupSecs }) 
                 ctx.fillStyle = col + Math.floor(alpha * 255).toString(16).padStart(2, '0');
                 ctx.fill();
             });
-
-            // Projectil cu glow
             ctx.save();
             ctx.beginPath();
             ctx.arc(cx, cy, 5, 0, Math.PI * 2);
@@ -240,7 +221,6 @@ export default function Arena({ t, arenaID, playerID, role, phase, setupSecs }) 
             ctx.shadowColor = col;
             ctx.fill();
             ctx.restore();
-
             if (tick >= totalTicks) {
                 clearInterval(interval);
                 let ring = 0;
@@ -265,114 +245,132 @@ export default function Arena({ t, arenaID, playerID, role, phase, setupSecs }) 
     };
 
     return (
-        <div id="arena" ref={arenaRef} style={{ display: 'block' }}>
+        <div className="arena-wrapper">
 
-            {/* FUNDALURI */}
-            <div className="top-band"></div>
-            <div className="band-separator"></div>
-            <div className="bottom-band"></div>
+            {/* ── ARENA ── */}
+            <div id="arena" ref={arenaRef}>
 
-            {/* SPRITE-URI */}
-            <div className="element-box base-box left-base">
-                <img src="/assets/baza.jpeg" alt="Baza Player" />
-            </div>
-            <div className="element-box cactus-box">
-                <img src="/assets/cactus.jpeg" alt="Cactus" />
-            </div>
-            <div className="element-box snake-box">
-                <img src="/assets/sarpe.jpeg" alt="Sarpe" />
-            </div>
-            <div className="element-box empty-box"></div>
-            <div className="element-box base-box right-base">
-                <img src="/assets/baza.jpeg" alt="Baza Inamic" className="mirrored" />
-            </div>
+                {/* FUNDALURI — suportă imagini prin variabile CSS */}
+                <div className="top-band"></div>
+                <div className="band-separator"></div>
+                <div className="bottom-band"></div>
 
-            {/* CANVAS ANIMAȚII */}
-            <canvas id="strike-canvas" ref={canvasRef}></canvas>
-
-            {/* PHASE BAR */}
-            <div id="phase-bar">
-                <span className="phase-label">CMD::ARENA</span>
-                <span id="phase-name" style={{ color: phase === 'infiltrate' ? '#C0704A' : '#4A8C42' }}>
-                    {phase === 'infiltrate' ? t.phaseInfil : t.phaseSetup}
-                </span>
-                <span id="countdown" style={{ color: phase === 'infiltrate' ? '#C0704A' : '#C0A050' }}>
-                    {formatTime(countdown)}
-                </span>
-            </div>
-
-            {/* HP BARS */}
-            <div className="hp-bar-wrap" id="hp-player">
-                <span className="hp-label">{t.lblSysYou}</span>
-                <div className="hp-track"><div className="hp-fill" style={{ width: `${hpPlayer}%` }}></div></div>
-            </div>
-            <div className="hp-bar-wrap" id="hp-enemy">
-                <span className="hp-label">{t.lblSysEnemy}</span>
-                <div className="hp-track"><div className="hp-fill" style={{ width: `${hpEnemy}%` }}></div></div>
-            </div>
-
-            {/*
-              TERMINAL — chat bubble atașat vizual de baza stângă
-              - resize nativ din colțul dreapta-jos (CSS resize: both)
-              - drag prin titlebar
-              - coada bubble-ului pointează spre stânga-jos (spre baza stângă)
-            */}
-            <div id="terminal-win" ref={termWinRef}>
-                <div className="term-bubble-tail"></div>
-                <div className="term-titlebar" id="term-drag-handle">
-                    <div className="term-btns">
-                        <span className="term-btn"></span>
-                        <span className="term-btn"></span>
-                        <span className="term-btn" style={{ background: '#4A8C42' }}></span>
-                    </div>
-                    <span>{t.termTitle}</span>
-                    <span className="resize-hint" title="Drag colț dreapta-jos pentru resize">⤢</span>
+                {/* SPRITE-URI */}
+                <div className="element-box base-box left-base">
+                    <img src="/assets/baza.jpeg" alt="Baza Player" />
                 </div>
-                <div id="term-body" ref={termBodyRef}
-                     style={{ flex: 1, padding: '4px', overflow: 'hidden', background: 'rgba(0,0,0,0.85)' }}>
+                <div className="element-box cactus-box">
+                    <img src="/assets/cactus.jpeg" alt="Cactus" />
                 </div>
-            </div>
+                <div className="element-box snake-box">
+                    <img src="/assets/sarpe.jpeg" alt="Sarpe" />
+                </div>
+                <div className="element-box empty-box"></div>
+                <div className="element-box base-box right-base">
+                    <img src="/assets/baza.jpeg" alt="Baza Inamic" className="mirrored" />
+                </div>
 
-            {/*
-              POUCH — 3 butoane pill ovale lungi
-              Poziționate deasupra bazei stângi, fără fundal negru de bară
-            */}
-            <div id="pouch">
-                {abilitiesInfo.map((ab, idx) => (
-                    <div
-                        key={idx}
-                        id={`ab-${idx}`}
-                        className={`ability-pill ${cds[idx] > 0 ? 'on-cd' : ''}`}
-                        onClick={() => useAbility(idx)}
-                        style={{ '--ab-color': ab.color }}
-                    >
-                        <span className="ab-icon">{ab.icon}</span>
-                        <span className="ab-name">{ab.name}</span>
-                        {cds[idx] > 0 && <span className="ab-cd-num">{cds[idx]}s</span>}
-                        <div className="ab-cd-progress"
-                             style={{ width: cds[idx] > 0 ? `${(cds[idx] / ab.cd) * 100}%` : '0%' }}>
+                {/* CANVAS ANIMAȚII */}
+                <canvas id="strike-canvas" ref={canvasRef}></canvas>
+
+                {/* PHASE BAR */}
+                <div id="phase-bar">
+                    <span className="phase-label">CMD::ARENA</span>
+                    <span id="phase-name" style={{ color: phase === 'infiltrate' ? '#C0704A' : '#4A8C42' }}>
+                        {phase === 'infiltrate' ? t.phaseInfil : t.phaseSetup}
+                    </span>
+                    <span id="countdown" style={{ color: phase === 'infiltrate' ? '#C0704A' : '#C0A050' }}>
+                        {formatTime(countdown)}
+                    </span>
+                </div>
+
+                {/* HP BARS */}
+                <div className="hp-bar-wrap" id="hp-player">
+                    <span className="hp-label">{t.lblSysYou}</span>
+                    <div className="hp-track"><div className="hp-fill" style={{ width: `${hpPlayer}%` }}></div></div>
+                </div>
+                <div className="hp-bar-wrap" id="hp-enemy">
+                    <span className="hp-label">{t.lblSysEnemy}</span>
+                    <div className="hp-track"><div className="hp-fill" style={{ width: `${hpEnemy}%` }}></div></div>
+                </div>
+
+                {/* TERMINAL */}
+                <div id="terminal-win" ref={termWinRef}>
+                    <div className="term-bubble-tail"></div>
+                    <div className="term-titlebar" id="term-drag-handle">
+                        <div className="term-btns">
+                            <span className="term-btn"></span>
+                            <span className="term-btn"></span>
+                            <span className="term-btn" style={{ background: '#4A8C42' }}></span>
                         </div>
+                        <span>{t.termTitle}</span>
+                        <span className="resize-hint" title="Drag colț dreapta-jos pentru resize">⤢</span>
                     </div>
-                ))}
+                    <div id="term-body" ref={termBodyRef}
+                         style={{ flex: 1, padding: '4px', overflow: 'hidden', background: 'rgba(0,0,0,0.85)' }}>
+                    </div>
+                </div>
+
+                {/* NOTIF */}
+                <div id="notif" className={notif.show ? 'show' : ''}>{notif.msg}</div>
+
+                {/* GAME OVER */}
+                {gameOverInfo && (
+                    <div id="winner-overlay" className="show" style={{ display: 'flex' }}>
+                        <div className={`winner-title ${gameOverInfo.won ? 'won' : 'lost'}`}>{gameOverInfo.title}</div>
+                        <div className="winner-sub">
+                            {gameOverInfo.won ? "Sistemul inamic a fost distrus." : "Sistemul tău a fost compromis."}
+                        </div>
+                        <button className="btn btn-green"
+                                style={{ width: 'auto', padding: '.6rem 2rem' }}
+                                onClick={() => window.location.reload()}>
+                            {t.btnRestart}
+                        </button>
+                    </div>
+                )}
             </div>
 
-            {/* NOTIF */}
-            <div id="notif" className={notif.show ? 'show' : ''}>{notif.msg}</div>
-
-            {/* GAME OVER */}
-            {gameOverInfo && (
-                <div id="winner-overlay" className="show" style={{ display: 'flex' }}>
-                    <div className={`winner-title ${gameOverInfo.won ? 'won' : 'lost'}`}>{gameOverInfo.title}</div>
-                    <div className="winner-sub">
-                        {gameOverInfo.won ? "Sistemul inamic a fost distrus." : "Sistemul tău a fost compromis."}
-                    </div>
-                    <button className="btn btn-green"
-                            style={{ width: 'auto', padding: '.6rem 2rem' }}
-                            onClick={() => window.location.reload()}>
-                        {t.btnRestart}
-                    </button>
+            {/* ── FOOTER — POUCH orizontal ── */}
+            <footer id="arena-footer">
+                {/* stânga: arena ID */}
+                <div className="footer-left">
+                    <span className="footer-tag">ARENA</span>
+                    <span className="footer-id">{arenaID ?? '—'}</span>
                 </div>
-            )}
+
+                {/* centru: abilities orizontale */}
+                <div id="pouch">
+                    {abilitiesInfo.map((ab, idx) => (
+                        <div
+                            key={idx}
+                            className={`ability-pill ${cds[idx] > 0 ? 'on-cd' : ''}`}
+                            onClick={() => useAbility(idx)}
+                            style={{ '--ab-color': ab.color }}
+                        >
+                            {/* bara de cooldown ca fundal */}
+                            <div
+                                className="ab-cd-progress"
+                                style={{ width: cds[idx] > 0 ? `${(cds[idx] / ab.cd) * 100}%` : '0%' }}
+                            />
+                            <span className="ab-icon">{ab.icon}</span>
+                            <span className="ab-name">{ab.name}</span>
+                            {cds[idx] > 0
+                                ? <span className="ab-cd-num">{cds[idx]}s</span>
+                                : <span className="ab-key">[{idx + 1}]</span>
+                            }
+                        </div>
+                    ))}
+                </div>
+
+                {/* dreapta: rol + faza */}
+                <div className="footer-right">
+                    <span className="footer-tag">ROLE</span>
+                    <span className="footer-role" style={{ color: role === 'host' ? '#4A8C42' : '#C0704A' }}>
+                        {role?.toUpperCase() ?? '—'}
+                    </span>
+                </div>
+            </footer>
+
         </div>
     );
 }

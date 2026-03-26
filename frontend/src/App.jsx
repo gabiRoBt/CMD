@@ -69,11 +69,12 @@ function App() {
         <header>
           <div className="logo">CMD<span>::</span>ARENA</div>
           <div className="status-bar">
+            {/* În App.jsx, caută selectorul de skin-uri în header */}
             <select className="header-select" value={skin} onChange={(e) => setSkin(e.target.value)}>
               <option value="skin-classic">SKIN: CLASSIC</option>
               <option value="skin-cyberpunk">SKIN: CYBERPUNK</option>
               <option value="skin-wasteland">SKIN: WASTELAND</option>
-              <option value="skin-space">SKIN: DEEP SPACE</option>
+              <option value="skin-dev-mode">SKIN: DEV MODE</option>
             </select>
             <select className="header-select" value={lang} onChange={(e) => setLang(e.target.value)}>
               <option value="ro">RO</option>
