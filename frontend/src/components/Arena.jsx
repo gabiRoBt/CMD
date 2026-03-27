@@ -3,39 +3,26 @@ import { Terminal } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 import 'xterm/css/xterm.css';
 
-export default function Arena({ t, arenaID, playerID, role, phase, setupSecs }) {
-    const [countdown, setCountdown] = useState(setupSecs || 90);
-    const [hpPlayer, setHpPlayer] = useState(100);
-    const [hpEnemy, setHpEnemy] = useState(100);
-    const [cds, setCds] = useState([0, 0, 0]);
-    const [notif, setNotif] = useState({ show: false, msg: '' });
+const ABILITY_DEFS = {
+    scramble: { icon: '🌀', name: 'SCRAMBLE', color: '#C0704A', effect: 'ENEMY COMMANDS SCRAMBLED' },
+    repair:   { icon: '🔧', name: 'REPAIR',   color: '#4A8C42', effect: 'REPAIR KIT ACTIVATED'     },
+    rocket:   { icon: '🚀', name: 'ROCKET',   color: '#C0A050', effect: 'ENEMY INPUT LOCKED — 10s' },
+    sonar:    { icon: '📡', name: 'SONAR',    color: '#5A9CB0', effect: 'EMPTY FOLDERS DELETED'    },
+};
+
+export default function Arena({ t, arenaID, playerID, role, phase, setupSecs, abilities = [] }) {
+    const [usedAbilities, setUsedAbilities] = useState(new Set());
+    const [notif, setNotif]     = useState({ show: false, msg: '' });
     const [gameOverInfo, setGameOverInfo] = useState(null);
 
     const termBodyRef = useRef(null);
-    const termWinRef = useRef(null);
-    const arenaRef = useRef(null);
-    const canvasRef = useRef(null);
-    const wsRef = useRef(null);
+    const termWinRef  = useRef(null);
+    const arenaRef    = useRef(null);
+    const canvasRef   = useRef(null);
+    const wsRef       = useRef(null);
     const fitAddonRef = useRef(null);
 
-    // 1. Countdown
-    useEffect(() => {
-        setCountdown(setupSecs || 90);
-        const interval = setInterval(() => {
-            setCountdown(prev => (prev > 0 ? prev - 1 : 0));
-        }, 1000);
-        return () => clearInterval(interval);
-    }, [setupSecs, phase]);
-
-    // 2. Cooldown-uri
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setCds(prevCds => prevCds.map(cd => (cd > 0 ? cd - 1 : 0)));
-        }, 1000);
-        return () => clearInterval(interval);
-    }, []);
-
-    // 3. Terminal Xterm.js
+    // ── xterm.js + SSH WebSocket proxy ────────────────────────────────────
     useEffect(() => {
         if (!termBodyRef.current) return;
         termBodyRef.current.innerHTML = '';
@@ -66,196 +53,170 @@ export default function Arena({ t, arenaID, playerID, role, phase, setupSecs }) 
         });
 
         const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-        const ws = new WebSocket(`${proto}://${location.host}/ws/terminal?arena_id=${arenaID}&player_id=${playerID}`);
+        const ws = new WebSocket(
+            `${proto}://${location.host}/ws/terminal?arena_id=${arenaID}&player_id=${playerID}`
+        );
         wsRef.current = ws;
 
-        ws.onmessage = (event) => term.write(event.data);
+        // ── FIX CRITIC: binaryType arraybuffer → Uint8Array → xterm ──────
+        ws.binaryType = 'arraybuffer';
+        ws.onmessage = (event) => {
+            if (event.data instanceof ArrayBuffer) {
+                term.write(new Uint8Array(event.data));
+            } else {
+                term.write(event.data);
+            }
+        };
+        ws.onopen  = () => { term.focus(); };
+        ws.onerror = (e) => console.error('[terminal ws]', e);
+        ws.onclose = () => term.write('\r\n\x1b[31m[conexiune închisă]\x1b[0m\r\n');
+
         term.onData((data) => {
             if (ws.readyState === WebSocket.OPEN) ws.send(data);
         });
 
-        const handleResize = () => fitAddon.fit();
+        const handleResize = () => { try { fitAddon.fit(); } catch (_) {} };
         window.addEventListener('resize', handleResize);
 
         return () => {
             window.removeEventListener('resize', handleResize);
             term.dispose();
-            ws.close();
+            if (ws.readyState <= WebSocket.OPEN) ws.close();
         };
     }, [arenaID, playerID, phase]);
 
-    // 4. ResizeObserver
+    // ── ResizeObserver ────────────────────────────────────────────────────
     useEffect(() => {
         if (!termWinRef.current) return;
-        const ro = new ResizeObserver(() => {
-            try { fitAddonRef.current?.fit(); } catch (_) {}
-        });
+        const ro = new ResizeObserver(() => { try { fitAddonRef.current?.fit(); } catch (_) {} });
         ro.observe(termWinRef.current);
         return () => ro.disconnect();
     }, []);
 
-    // 5. Drag terminal
+    // ── Drag: position:fixed față de viewport ─────────────────────────────
+    // Poate trece peste header. Blocat la footer (52px de jos).
     useEffect(() => {
-        const win = termWinRef.current;
+        const win    = termWinRef.current;
         const handle = document.getElementById('term-drag-handle');
-        if (!win || !handle || !arenaRef.current) return;
+        if (!win || !handle) return;
+        let dragging = false, ox = 0, oy = 0;
 
-        let dragging = false;
-        let ox = 0, oy = 0;
-
-        const onMouseDown = (e) => {
+        const onDown = (e) => {
             if (e.target.closest('.resize-hint')) return;
             dragging = true;
-            const rect = win.getBoundingClientRect();
-            ox = e.clientX - rect.left;
-            oy = e.clientY - rect.top;
+            const r = win.getBoundingClientRect();
+            ox = e.clientX - r.left;
+            oy = e.clientY - r.top;
             e.preventDefault();
         };
-        const onMouseMove = (e) => {
+        const onMove = (e) => {
             if (!dragging) return;
-            const ar = arenaRef.current.getBoundingClientRect();
-            let newX = e.clientX - ar.left - ox;
-            let newY = e.clientY - ar.top - oy;
-            newX = Math.max(0, Math.min(ar.width - win.offsetWidth, newX));
-            newY = Math.max(32, Math.min(ar.height - win.offsetHeight, newY));
-            win.style.left = `${newX}px`;
-            win.style.top = `${newY}px`;
+            let nx = e.clientX - ox;
+            let ny = e.clientY - oy;
+            nx = Math.max(0, Math.min(window.innerWidth  - win.offsetWidth,  nx));
+            ny = Math.max(0, Math.min(window.innerHeight - win.offsetHeight - 52, ny));
+            win.style.left = `${nx}px`;
+            win.style.top  = `${ny}px`;
         };
-        const onMouseUp = () => { dragging = false; };
+        const onUp = () => { dragging = false; };
 
-        handle.addEventListener('mousedown', onMouseDown);
-        document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('mouseup', onMouseUp);
-
+        handle.addEventListener('mousedown', onDown);
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
         return () => {
-            handle.removeEventListener('mousedown', onMouseDown);
-            document.removeEventListener('mousemove', onMouseMove);
-            document.removeEventListener('mouseup', onMouseUp);
+            handle.removeEventListener('mousedown', onDown);
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
         };
     }, []);
 
-    // 6. Game Over
+    // ── Game Over ─────────────────────────────────────────────────────────
     useEffect(() => {
-        const handleGameOver = (e) => {
-            const payload = e.detail;
-            setGameOverInfo({
-                won: payload.you_won,
-                title: payload.you_won ? t.winTitle : t.loseTitle
-            });
-            setCountdown(0);
+        const handler = (e) => {
+            const p = e.detail;
+            const title = p.draw ? (t.drawTitle || '— REMIZĂ —') : (p.you_won ? t.winTitle : t.loseTitle);
+            setGameOverInfo({ won: p.you_won, draw: p.draw, title });
             if (wsRef.current) wsRef.current.close();
         };
-        window.addEventListener('gameOver', handleGameOver);
-        return () => window.removeEventListener('gameOver', handleGameOver);
+        window.addEventListener('gameOver', handler);
+        return () => window.removeEventListener('gameOver', handler);
     }, [t]);
-
-    const formatTime = (secs) => {
-        const m = String(Math.floor(secs / 60)).padStart(2, '0');
-        const s = String(secs % 60).padStart(2, '0');
-        return `${m}:${s}`;
-    };
 
     const showNotif = (msg) => {
         setNotif({ show: true, msg });
         setTimeout(() => setNotif({ show: false, msg: '' }), 3000);
     };
 
-    const abilitiesInfo = [
-        { cd: 20, effect: t.abStrikeEf,   icon: '🚀', name: 'STRIKE',   color: '#C0A050' },
-        { cd: 30, effect: t.abScrambleEf, icon: '🌀', name: 'SCRAMBLE', color: '#C0704A' },
-        { cd: 45, effect: t.abShieldEf,   icon: '🛡️', name: 'SHIELD',   color: '#4A8C42' },
-    ];
-
-    const useAbility = async (idx) => {
+    const useAbility = async (name) => {
         if (phase !== 'infiltrate') { showNotif(t.notifOnlyInfil); return; }
-        if (cds[idx] > 0) return;
-        setCds(prev => { const next = [...prev]; next[idx] = abilitiesInfo[idx].cd; return next; });
-        fireStrikeAnimation(idx);
-        showNotif(abilitiesInfo[idx].effect);
+        if (usedAbilities.has(name)) return;
+        setUsedAbilities(prev => new Set([...prev, name]));
+        fireStrikeAnimation(name);
+        showNotif(ABILITY_DEFS[name]?.effect || name.toUpperCase());
         try {
             await fetch('/api/ability', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ arena_id: arenaID, player_id: playerID, ability_id: idx })
+                body: JSON.stringify({ arena_id: arenaID, player_id: playerID, ability: name })
             });
         } catch (e) { console.error(e); }
     };
 
-    const fireStrikeAnimation = (idx) => {
+    const fireStrikeAnimation = (name) => {
         if (!canvasRef.current || !arenaRef.current) return;
         const canvas = canvasRef.current;
-        const ctx = canvas.getContext('2d');
-        const arena = arenaRef.current;
-        canvas.width = arena.offsetWidth;
+        const ctx    = canvas.getContext('2d');
+        const arena  = arenaRef.current;
+        canvas.width  = arena.offsetWidth;
         canvas.height = arena.offsetHeight;
-        const sx = arena.offsetWidth * 0.18;
-        const sy = arena.offsetHeight * 0.73;
-        const tx = arena.offsetWidth * 0.82;
-        const ty = arena.offsetHeight * 0.73;
-        const col = abilitiesInfo[idx]?.color || '#C0A050';
-        const trailPoints = [];
+        const sx  = arena.offsetWidth  * 0.18;
+        const sy  = arena.offsetHeight * 0.73;
+        const tx  = arena.offsetWidth  * 0.82;
+        const ty  = arena.offsetHeight * 0.73;
+        const col = ABILITY_DEFS[name]?.color || '#C0A050';
+        const trail = [];
         let tick = 0;
-        const totalTicks = 52;
-        const interval = setInterval(() => {
+        const iv = setInterval(() => {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             tick++;
-            const prog = tick / totalTicks;
-            const ease = prog < 0.5 ? 2 * prog * prog : -1 + (4 - 2 * prog) * prog;
-            const cx = sx + (tx - sx) * ease;
-            const cy = sy + (ty - sy) * ease - Math.sin(prog * Math.PI) * (arena.offsetHeight * 0.40);
-            trailPoints.push({ x: cx, y: cy });
-            if (trailPoints.length > 22) trailPoints.shift();
-            trailPoints.forEach((p, i) => {
-                const alpha = (i / trailPoints.length) * 0.55;
-                const r = 1.5 + (i / trailPoints.length) * 3.5;
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
-                ctx.fillStyle = col + Math.floor(alpha * 255).toString(16).padStart(2, '0');
+            const prog = tick / 52;
+            const ease = prog < 0.5 ? 2*prog*prog : -1+(4-2*prog)*prog;
+            const cx = sx + (tx-sx)*ease;
+            const cy = sy + (ty-sy)*ease - Math.sin(prog*Math.PI)*(arena.offsetHeight*0.40);
+            trail.push({ x:cx, y:cy });
+            if (trail.length > 22) trail.shift();
+            trail.forEach((p, i) => {
+                const a = (i/trail.length)*0.55;
+                const r = 1.5+(i/trail.length)*3.5;
+                ctx.beginPath(); ctx.arc(p.x,p.y,r,0,Math.PI*2);
+                ctx.fillStyle = col+Math.floor(a*255).toString(16).padStart(2,'0');
                 ctx.fill();
             });
-            ctx.save();
-            ctx.beginPath();
-            ctx.arc(cx, cy, 5, 0, Math.PI * 2);
-            ctx.fillStyle = col;
-            ctx.shadowBlur = 16;
-            ctx.shadowColor = col;
-            ctx.fill();
-            ctx.restore();
-            if (tick >= totalTicks) {
-                clearInterval(interval);
-                let ring = 0;
-                const explode = setInterval(() => {
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    ring++;
-                    ctx.save();
-                    ctx.beginPath();
-                    ctx.arc(tx, ty, ring * 10, 0, Math.PI * 2);
-                    ctx.strokeStyle = col;
-                    ctx.lineWidth = 2.5;
-                    ctx.globalAlpha = Math.max(0, 1 - ring * 0.26);
-                    ctx.stroke();
-                    ctx.restore();
-                    if (ring >= 4) {
-                        clearInterval(explode);
-                        ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    }
-                }, 70);
+            ctx.save(); ctx.beginPath(); ctx.arc(cx,cy,5,0,Math.PI*2);
+            ctx.fillStyle=col; ctx.shadowBlur=16; ctx.shadowColor=col;
+            ctx.fill(); ctx.restore();
+            if (tick>=52) {
+                clearInterval(iv);
+                let ring=0;
+                const ex=setInterval(()=>{
+                    ctx.clearRect(0,0,canvas.width,canvas.height); ring++;
+                    ctx.save(); ctx.beginPath(); ctx.arc(tx,ty,ring*10,0,Math.PI*2);
+                    ctx.strokeStyle=col; ctx.lineWidth=2.5;
+                    ctx.globalAlpha=Math.max(0,1-ring*0.26);
+                    ctx.stroke(); ctx.restore();
+                    if(ring>=4){clearInterval(ex);ctx.clearRect(0,0,canvas.width,canvas.height);}
+                },70);
             }
         }, 16);
     };
 
     return (
         <div className="arena-wrapper">
-
-            {/* ── ARENA ── */}
             <div id="arena" ref={arenaRef}>
-
-                {/* FUNDALURI — suportă imagini prin variabile CSS */}
                 <div className="top-band"></div>
                 <div className="band-separator"></div>
                 <div className="bottom-band"></div>
 
-                {/* SPRITE-URI */}
                 <div className="element-box base-box left-base">
                     <img src="/assets/baza.jpeg" alt="Baza Player" />
                 </div>
@@ -270,56 +231,38 @@ export default function Arena({ t, arenaID, playerID, role, phase, setupSecs }) 
                     <img src="/assets/baza.jpeg" alt="Baza Inamic" className="mirrored" />
                 </div>
 
-                {/* CANVAS ANIMAȚII */}
+                {/* canvas z:10 — proiectile sub terminal z:200 */}
                 <canvas id="strike-canvas" ref={canvasRef}></canvas>
 
-                {/* PHASE BAR */}
+                {/* Phase bar — grid 3 coloane aliniat cu headerul */}
                 <div id="phase-bar">
-                    <span className="phase-label">CMD::ARENA</span>
+                    <span className="phase-label">{playerID ?? '—'}</span>
                     <span id="phase-name" style={{ color: phase === 'infiltrate' ? '#C0704A' : '#4A8C42' }}>
                         {phase === 'infiltrate' ? t.phaseInfil : t.phaseSetup}
                     </span>
-                    <span id="countdown" style={{ color: phase === 'infiltrate' ? '#C0704A' : '#C0A050' }}>
-                        {formatTime(countdown)}
-                    </span>
+                    <span className="phase-nuke">nuke: /bin/nuke_system</span>
                 </div>
 
-                {/* HP BARS */}
                 <div className="hp-bar-wrap" id="hp-player">
                     <span className="hp-label">{t.lblSysYou}</span>
-                    <div className="hp-track"><div className="hp-fill" style={{ width: `${hpPlayer}%` }}></div></div>
+                    <div className="hp-track"><div className="hp-fill" style={{ width: '100%' }}></div></div>
                 </div>
                 <div className="hp-bar-wrap" id="hp-enemy">
                     <span className="hp-label">{t.lblSysEnemy}</span>
-                    <div className="hp-track"><div className="hp-fill" style={{ width: `${hpEnemy}%` }}></div></div>
+                    <div className="hp-track"><div className="hp-fill" style={{ width: '100%' }}></div></div>
                 </div>
 
-                {/* TERMINAL */}
-                <div id="terminal-win" ref={termWinRef}>
-                    <div className="term-bubble-tail"></div>
-                    <div className="term-titlebar" id="term-drag-handle">
-                        <div className="term-btns">
-                            <span className="term-btn"></span>
-                            <span className="term-btn"></span>
-                            <span className="term-btn" style={{ background: '#4A8C42' }}></span>
-                        </div>
-                        <span>{t.termTitle}</span>
-                        <span className="resize-hint" title="Drag colț dreapta-jos pentru resize">⤢</span>
-                    </div>
-                    <div id="term-body" ref={termBodyRef}
-                         style={{ flex: 1, padding: '4px', overflow: 'hidden', background: 'rgba(0,0,0,0.85)' }}>
-                    </div>
-                </div>
-
-                {/* NOTIF */}
                 <div id="notif" className={notif.show ? 'show' : ''}>{notif.msg}</div>
 
-                {/* GAME OVER */}
                 {gameOverInfo && (
                     <div id="winner-overlay" className="show" style={{ display: 'flex' }}>
-                        <div className={`winner-title ${gameOverInfo.won ? 'won' : 'lost'}`}>{gameOverInfo.title}</div>
+                        <div className={`winner-title ${gameOverInfo.draw ? 'draw' : gameOverInfo.won ? 'won' : 'lost'}`}>{gameOverInfo.title}</div>
                         <div className="winner-sub">
-                            {gameOverInfo.won ? "Sistemul inamic a fost distrus." : "Sistemul tău a fost compromis."}
+                            {gameOverInfo.draw
+                                ? 'Timpul a expirat. Niciun sistem nu a fost compromis.'
+                                : gameOverInfo.won
+                                    ? 'Sistemul inamic a fost distrus.'
+                                    : 'Sistemul tău a fost compromis.'}
                         </div>
                         <button className="btn btn-green"
                                 style={{ width: 'auto', padding: '.6rem 2rem' }}
@@ -330,39 +273,56 @@ export default function Arena({ t, arenaID, playerID, role, phase, setupSecs }) 
                 )}
             </div>
 
-            {/* ── FOOTER — POUCH orizontal ── */}
+            {/* Terminal — position:fixed, z:200, CRT via ::after în CSS */}
+            <div id="terminal-win" ref={termWinRef}>
+                <div className="term-bubble-tail"></div>
+                <div className="term-titlebar" id="term-drag-handle">
+                    <div className="term-btns">
+                        <span className="term-btn"></span>
+                        <span className="term-btn"></span>
+                        <span className="term-btn" style={{ background: '#4A8C42' }}></span>
+                    </div>
+                    <span>{t.termTitle}</span>
+                    <span className="resize-hint" title="Drag colț dreapta-jos pentru resize">⤢</span>
+                </div>
+                <div id="term-body" ref={termBodyRef}
+                     style={{ flex: 1, padding: '4px', overflow: 'hidden', background: 'rgba(0,0,0,0.85)' }}>
+                </div>
+            </div>
+
             <footer id="arena-footer">
-                {/* stânga: arena ID */}
                 <div className="footer-left">
                     <span className="footer-tag">ARENA</span>
                     <span className="footer-id">{arenaID ?? '—'}</span>
                 </div>
 
-                {/* centru: abilities orizontale */}
                 <div id="pouch">
-                    {abilitiesInfo.map((ab, idx) => (
-                        <div
-                            key={idx}
-                            className={`ability-pill ${cds[idx] > 0 ? 'on-cd' : ''}`}
-                            onClick={() => useAbility(idx)}
-                            style={{ '--ab-color': ab.color }}
-                        >
-                            {/* bara de cooldown ca fundal */}
-                            <div
-                                className="ab-cd-progress"
-                                style={{ width: cds[idx] > 0 ? `${(cds[idx] / ab.cd) * 100}%` : '0%' }}
-                            />
-                            <span className="ab-icon">{ab.icon}</span>
-                            <span className="ab-name">{ab.name}</span>
-                            {cds[idx] > 0
-                                ? <span className="ab-cd-num">{cds[idx]}s</span>
-                                : <span className="ab-key">[{idx + 1}]</span>
-                            }
-                        </div>
-                    ))}
+                    {abilities.length === 0 ? (
+                        <span className="pouch-empty-msg">
+                            {phase === 'setup' ? '[ mv weapon_*.bin ~/pouch/ ]' : '— POUCH EMPTY —'}
+                        </span>
+                    ) : (
+                        abilities.map((name) => {
+                            const def  = ABILITY_DEFS[name] || { icon:'?', name:name.toUpperCase(), color:'#666', effect:'' };
+                            const used = usedAbilities.has(name);
+                            return (
+                                <div key={name}
+                                     className={`ability-pill${used ? ' used' : ''}`}
+                                     onClick={() => useAbility(name)}
+                                     style={{ '--ab-color': used ? '#2a2a2a' : def.color }}
+                                     title={used ? 'Deja folosit' : def.effect}>
+                                    <div className="ab-cd-progress" style={{ width: 0 }} />
+                                    <span className="ab-icon">{used ? '—' : def.icon}</span>
+                                    <span className="ab-name">{def.name}</span>
+                                    {used
+                                        ? <span className="ab-used-tag">USED</span>
+                                        : <span className="ab-key">[use]</span>}
+                                </div>
+                            );
+                        })
+                    )}
                 </div>
 
-                {/* dreapta: rol + faza */}
                 <div className="footer-right">
                     <span className="footer-tag">ROLE</span>
                     <span className="footer-role" style={{ color: role === 'host' ? '#4A8C42' : '#C0704A' }}>
@@ -370,7 +330,6 @@ export default function Arena({ t, arenaID, playerID, role, phase, setupSecs }) 
                     </span>
                 </div>
             </footer>
-
         </div>
     );
 }

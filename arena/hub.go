@@ -8,7 +8,6 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// EventType definește tipul de eveniment trimis prin WebSocket
 type EventType string
 
 const (
@@ -16,17 +15,16 @@ const (
 	EventArenaUpdated EventType = "arena_updated"
 	EventGameStart    EventType = "game_start"
 	EventPhaseChange  EventType = "phase_change"
+	EventPouchResult  EventType = "pouch_result" // abilități validate după setup
 	EventGameOver     EventType = "game_over"
 	EventError        EventType = "error"
 )
 
-// WSEvent este structura generică trimisă prin WebSocket
 type WSEvent struct {
 	Type    EventType   `json:"type"`
 	Payload interface{} `json:"payload"`
 }
 
-// GameStartPayload — trimis ambilor jucători când SSH e gata
 type GameStartPayload struct {
 	ArenaID    string `json:"arena_id"`
 	SSHCommand string `json:"ssh_command"`
@@ -35,23 +33,27 @@ type GameStartPayload struct {
 	SetupSecs  int    `json:"setup_seconds"`
 }
 
-// PhaseChangePayload — trimis când faza se schimbă
 type PhaseChangePayload struct {
 	ArenaID    string `json:"arena_id"`
 	Phase      string `json:"phase"`
-	SSHCommand string `json:"ssh_command,omitempty"` // nou port SSH la Infiltrate
+	SSHCommand string `json:"ssh_command,omitempty"`
 	MessageRO  string `json:"message_ro"`
 }
 
-// GameOverPayload — trimis la finalul meciului
+// PouchResultPayload — trimis la finalul setup-ului cu abilitățile validate.
+type PouchResultPayload struct {
+	ArenaID   string   `json:"arena_id"`
+	Abilities []string `json:"abilities"` // ex: ["scramble", "rocket"]
+}
+
 type GameOverPayload struct {
 	ArenaID    string `json:"arena_id"`
 	WinnerID   string `json:"winner_id"`
 	WinnerRole string `json:"winner_role"`
 	YouWon     bool   `json:"you_won"`
+	Draw       bool   `json:"draw"`
 }
 
-// ArenaView — reprezentarea publică a unei arene (fără date sensibile)
 type ArenaView struct {
 	ID       string `json:"id"`
 	Phase    string `json:"phase"`
@@ -60,24 +62,19 @@ type ArenaView struct {
 	HasGuest bool   `json:"has_guest"`
 }
 
-// Client reprezintă o conexiune WebSocket activă
 type Client struct {
 	conn     *websocket.Conn
 	send     chan []byte
 	playerID string
-	arenaID  string // arena în care se află (poate fi gol)
+	arenaID  string
 }
 
-// Hub gestionează toate conexiunile WebSocket active
 type Hub struct {
 	mu      sync.RWMutex
 	clients map[*Client]bool
 
-	// Canal pentru broadcast către toți clienții
 	broadcast chan []byte
-
-	// Canal pentru mesaje directe către un jucător specific
-	direct chan directMessage
+	direct    chan directMessage
 
 	register   chan *Client
 	unregister chan *Client
@@ -105,7 +102,7 @@ func (h *Hub) Run() {
 			h.mu.Lock()
 			h.clients[client] = true
 			h.mu.Unlock()
-			log.Printf("[Hub] Client conectat: %s", client.playerID)
+			log.Printf("[Hub] Conectat: %s", client.playerID)
 
 		case client := <-h.unregister:
 			h.mu.Lock()
@@ -114,7 +111,7 @@ func (h *Hub) Run() {
 				close(client.send)
 			}
 			h.mu.Unlock()
-			log.Printf("[Hub] Client deconectat: %s", client.playerID)
+			log.Printf("[Hub] Deconectat: %s", client.playerID)
 
 		case msg := <-h.broadcast:
 			h.mu.RLock()
@@ -122,7 +119,6 @@ func (h *Hub) Run() {
 				select {
 				case client.send <- msg:
 				default:
-					// Buffer plin — client lent, îl ignorăm
 				}
 			}
 			h.mu.RUnlock()
@@ -143,38 +139,34 @@ func (h *Hub) Run() {
 	}
 }
 
-// Broadcast trimite un eveniment tuturor clienților conectați
 func (h *Hub) Broadcast(event WSEvent) {
 	data, err := json.Marshal(event)
 	if err != nil {
-		log.Printf("[Hub] Eroare marshal broadcast: %v", err)
+		log.Printf("[Hub] Marshal error: %v", err)
 		return
 	}
 	h.broadcast <- data
 }
 
-// SendToPlayer trimite un eveniment unui singur jucător
 func (h *Hub) SendToPlayer(playerID string, event WSEvent) {
 	data, err := json.Marshal(event)
 	if err != nil {
-		log.Printf("[Hub] Eroare marshal direct: %v", err)
+		log.Printf("[Hub] Marshal error: %v", err)
 		return
 	}
 	h.direct <- directMessage{playerID: playerID, data: data}
 }
 
-// WritePump pompează mesajele din canalul send către conexiunea WebSocket
 func (c *Client) WritePump() {
 	defer c.conn.Close()
 	for msg := range c.send {
 		if err := c.conn.WriteMessage(websocket.TextMessage, msg); err != nil {
-			log.Printf("[Hub] Eroare scriere WS pentru %s: %v", c.playerID, err)
+			log.Printf("[Hub] Write error pentru %s: %v", c.playerID, err)
 			return
 		}
 	}
 }
 
-// ReadPump citește mesajele inbound (în principal pentru a detecta deconectarea)
 func (c *Client) ReadPump(hub *Hub, onMessage func(playerID string, raw []byte)) {
 	defer func() {
 		hub.unregister <- c

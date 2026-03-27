@@ -6,16 +6,19 @@
   --sky-bg:    url('assets/hero.png') repeat-x center / auto 100%;
   --custom-ground-img: url('assets/nisip.jpeg') repeat center / auto auto;
   --sep-color: #2a1f1a;
+
+  /* padding orizontal comun — aliniat între header și phase-bar */
+  --h-pad: 2rem;
 }
 
 /* ── RESET ── */
 * { margin:0; padding:0; box-sizing:border-box; }
 
-/* ── SCROLLBAR — integrat în design ── */
+/* ── SCROLLBAR ── */
 ::-webkit-scrollbar { width:5px; height:5px; }
 ::-webkit-scrollbar-track { background:var(--bg); border-left:1px solid var(--border); }
 ::-webkit-scrollbar-thumb { background:var(--green-dark); border:1px solid var(--green-dim); }
-::-webkit-scrollbar-thumb:hover { background:var(--green-dim); box-shadow:0 0 6px var(--green-dim); }
+::-webkit-scrollbar-thumb:hover { background:var(--green-dim); }
 ::-webkit-scrollbar-corner { background:var(--bg); }
 * { scrollbar-width:thin; scrollbar-color:var(--green-dark) var(--bg); }
 
@@ -27,24 +30,31 @@ body {
   overflow-x:hidden;
 }
 
-/* ── FLICKER pe întregul body (fără scanlines) ── */
 @keyframes flicker { 92%{opacity:1} 93%{opacity:.93} 94%{opacity:1} 96%{opacity:.96} }
 body { animation:flicker 8s infinite; }
 
 /* ─────────────────────────────────────────
-   CRT SCANLINES — doar pe header și footer
-   (NU pe #arena)
+   CRT SCANLINES:
+     ✓ header
+     ✓ footer (#arena-footer)
+     ✓ terminal (#terminal-win)
+     ✗ arena background (#arena)
 ───────────────────────────────────────── */
-header, #arena-footer {
+header,
+#arena-footer,
+#terminal-win {
   position:relative;
   overflow:hidden;
 }
-header::after, #arena-footer::after {
+header::after,
+#arena-footer::after,
+#terminal-win::after {
   content:'';
   position:absolute;
   inset:0;
   pointer-events:none;
-  z-index:100;
+  /* terminal e deasupra tuturor, dar scanline e pe suprafața lui */
+  z-index:9999;
   background:repeating-linear-gradient(
           0deg,
           transparent,
@@ -54,14 +64,21 @@ header::after, #arena-footer::after {
   );
 }
 
-/* ── HEADER ── */
+/* ─────────────────────────────────────────
+   HEADER — grid 3 coloane aliniat cu phase-bar
+   Padding orizontal = --h-pad (același ca phase-bar)
+───────────────────────────────────────── */
 header {
   border-bottom:1px solid var(--border);
-  padding:1.2rem 2rem;
-  display:flex;
+  padding:1rem var(--h-pad);
+  display:grid;
+  grid-template-columns:1fr auto 1fr;
   align-items:center;
-  justify-content:space-between;
+  /* z-index mic — terminalul trece PESTE header */
+  position:relative;
+  z-index:50;
 }
+
 .logo {
   font-family:'Orbitron',monospace;
   font-weight:900;
@@ -71,10 +88,25 @@ header {
   text-shadow:0 0 20px var(--green),0 0 40px var(--green-dim);
 }
 .logo span { color:var(--green-dim); }
+
+/* Coloana centrală — countdown */
+.header-center {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.header-countdown {
+  font-family:'Orbitron',monospace;
+  font-size:1.5rem;
+  font-weight:900;
+  letter-spacing:.15em;
+  text-shadow:0 0 18px currentColor;
+}
+
+/* Coloana dreaptă — status */
 .status-bar {
   font-size:.7rem;
   color:var(--text-dim);
-  text-align:right;
   display:flex;
   align-items:center;
   gap:15px;
@@ -95,14 +127,13 @@ header {
   display:inline-block;
   width:6px; height:6px;
   border-radius:50%;
-  background:var(--green);
-  box-shadow:0 0 6px var(--green);
+  box-shadow:0 0 6px currentColor;
   margin-right:5px;
   animation:pulse 2s infinite;
 }
 @keyframes pulse { 50%{opacity:.3} }
 
-/* ── LOBBY panels ── */
+/* ── LOBBY ── */
 .container {
   max-width:1100px;
   margin:0 auto;
@@ -140,6 +171,7 @@ header {
   outline:none;
   transition:border-color .2s;
 }
+.field input:focus { border-color:var(--green-dim); }
 .btn {
   font-family:'Share Tech Mono',monospace;
   font-size:.78rem;
@@ -177,16 +209,21 @@ header {
 .empty-list { color:var(--text-dim); font-size:.72rem; text-align:center; padding:1.5rem 0; border:1px dashed var(--border); }
 
 /* ─────────────────────────────────────────
-   ARENA WRAPPER — arena + footer
+   ARENA WRAPPER
 ───────────────────────────────────────── */
 .arena-wrapper {
   display:flex;
   flex-direction:column;
-  height:calc(100vh - 73px); /* 100vh minus înălțimea header-ului */
+  height:calc(100vh - 73px); /* height header */
 }
 
 /* ─────────────────────────────────────────
-   ARENA
+   LAYER ORDER (crescător):
+   sky/ground (1) → bases/deco (10) → canvas (10)
+   → hp-bars (20) → phase-bar (50)
+   → header (z:50, terminal trece PESTE)
+   → footer (z:60)
+   → terminal (z:200)
 ───────────────────────────────────────── */
 #arena {
   flex:1;
@@ -194,40 +231,27 @@ header {
   background:#000;
   overflow:hidden;
   user-select:none;
-  /* fără scanlines — curate */
+  /* FĂRĂ CRT pe arenă */
 }
 
-/* ── FUNDALURI — suportă imagini prin var() ── */
+/* ── FUNDALURI ── */
 .top-band {
-  position:absolute;
-  top:0; left:0; right:0;
-  height:40%;
-  background:var(--sky-bg);
-  background-size:auto 100%;
-  z-index:1;
+  position:absolute; top:0; left:0; right:0; height:40%;
+  background:var(--sky-bg); background-size:auto 100%; z-index:1;
 }
 .band-separator {
-  position:absolute;
-  top:40%; left:0; right:0;
-  height:4px;
-  background:var(--sep-color);
-  z-index:2;
+  position:absolute; top:40%; left:0; right:0; height:4px;
+  background:var(--sep-color); z-index:2;
 }
 .bottom-band {
-  position:absolute;
-  top:40%; bottom:0; left:0; right:0;
-  background:var(--ground-bg);
-  z-index:1;
+  position:absolute; top:40%; bottom:0; left:0; right:0;
+  background:var(--ground-bg); z-index:1;
 }
 
-/* ── ELEMENT BOXES ── */
+/* ── ELEMENT BOXES — z:10 ── */
 .element-box {
-  position:absolute;
-  border:3px solid #1a1a1a;
-  z-index:10;
-  display:flex;
-  align-items:center;
-  justify-content:center;
+  position:absolute; border:3px solid #1a1a1a; z-index:10;
+  display:flex; align-items:center; justify-content:center;
 }
 .element-box img { max-width:100%; max-height:100%; object-fit:contain; }
 .base-box { bottom:15%; width:20%; aspect-ratio:1/1; }
@@ -238,34 +262,47 @@ header {
 .snake-box  { bottom:5%; left:48%; width:8%; aspect-ratio:1.2/1; }
 .empty-box  { bottom:5%; left:60%; width:12%; aspect-ratio:3/1; background:rgba(0,0,0,0.2); }
 
-/* ── CANVAS ── */
-#strike-canvas { position:absolute; inset:0; pointer-events:none; z-index:200; }
+/* ── CANVAS — z:10, proiectile sub terminal ── */
+#strike-canvas { position:absolute; inset:0; pointer-events:none; z-index:10; }
 
-/* ── PHASE BAR ── */
+/* ─────────────────────────────────────────
+   PHASE BAR — grid 3 coloane cu același
+   padding orizontal ca headerul (--h-pad)
+   → centrul vizual se aliniază perfect
+───────────────────────────────────────── */
 #phase-bar {
   position:absolute;
   top:0; left:0; right:0;
-  background:rgba(26,35,24,0.85);
+  background:rgba(26,35,24,0.88);
   backdrop-filter:blur(4px);
   border-bottom:1px solid #2D4229;
-  display:flex;
+  display:grid;
+  grid-template-columns:1fr auto 1fr;
   align-items:center;
-  justify-content:space-between;
-  padding:6px 16px;
+  padding:6px var(--h-pad); /* același padding orizontal ca headerul */
   z-index:50;
 }
-.phase-label { font-size:10px; color:#7A9E72; letter-spacing:.15em; font-family:monospace; }
-#countdown   { font-size:13px; color:#C0A050; letter-spacing:.1em; font-family:monospace; font-weight:bold; }
-#phase-name  { font-size:10px; color:#4A8C42; letter-spacing:.15em; font-family:monospace; }
+.phase-label {
+  font-size:10px; color:#7A9E72;
+  letter-spacing:.15em; font-family:monospace;
+  justify-self:start;
+}
+#phase-name {
+  font-size:10px; letter-spacing:.15em;
+  font-family:monospace;
+  justify-self:center;
+}
+.phase-nuke {
+  font-size:9px; color:#4A6741;
+  letter-spacing:.1em; font-family:monospace;
+  justify-self:end; opacity:.8;
+}
 
 /* ── HP BARS ── */
 .hp-bar-wrap {
   position:absolute;
   bottom:calc(15% + 20% + 4px);
-  display:flex;
-  flex-direction:column;
-  gap:2px;
-  z-index:20;
+  display:flex; flex-direction:column; gap:2px; z-index:20;
 }
 #hp-player { left:8%; align-items:flex-start; }
 #hp-enemy  { right:8%; align-items:flex-end; }
@@ -274,17 +311,22 @@ header {
 .hp-fill   { height:100%; background:#4A8C42; transition:width .4s; }
 #hp-enemy .hp-fill { background:#8C4A42; }
 
-/* ── TERMINAL ── */
+/* ─────────────────────────────────────────
+   TERMINAL — position:fixed, z:200
+   Trece PESTE header (z:50).
+   Blocat jos la footer.
+   CRT vine din #terminal-win::after de sus.
+───────────────────────────────────────── */
 #terminal-win {
-  position:absolute;
-  left:28%; top:10%;
+  position:fixed;
+  left:28%; top:80px;
   width:420px;
   min-width:260px; min-height:200px;
   height:300px;
   background:#1A2318;
   border:1px solid #4A6741;
   cursor:default;
-  z-index:100;
+  z-index:200;
   box-shadow:4px 4px 0 #0a110a;
   display:flex;
   flex-direction:column;
@@ -292,32 +334,32 @@ header {
   overflow:hidden;
   border-radius:4px 4px 4px 0;
 }
+/* CRT e deja adăugat pe #terminal-win::after sus, z-index:9999 față de
+   conținut intern. Trebuie override față de xterm canvas: */
+#terminal-win::after {
+  z-index:9999;
+  border-radius:4px 4px 4px 0;
+}
+
 .term-bubble-tail {
-  position:absolute;
-  bottom:-12px; left:0;
-  width:0; height:0;
-  border-style:solid;
+  position:absolute; bottom:-12px; left:0;
+  width:0; height:0; border-style:solid;
   border-width:12px 14px 0 0;
   border-color:#4A6741 transparent transparent transparent;
-  z-index:101;
+  z-index:201;
 }
 .term-bubble-tail::after {
-  content:'';
-  position:absolute;
-  bottom:1px; left:1px;
-  width:0; height:0;
-  border-style:solid;
+  content:''; position:absolute; bottom:1px; left:1px;
+  width:0; height:0; border-style:solid;
   border-width:11px 13px 0 0;
   border-color:#1A2318 transparent transparent transparent;
 }
 .term-titlebar {
-  background:#2D4229;
-  padding:5px 8px;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  cursor:move;
-  flex-shrink:0;
+  background:#2D4229; padding:5px 8px;
+  display:flex; align-items:center; justify-content:space-between;
+  cursor:move; flex-shrink:0;
+  /* titlebar deasupra CRT overlay */
+  position:relative; z-index:1;
 }
 .term-titlebar span { font-size:10px; color:#7A9E72; letter-spacing:.1em; font-family:monospace; }
 .term-btns { display:flex; gap:4px; }
@@ -327,189 +369,116 @@ header {
 
 /* ── NOTIF ── */
 #notif {
-  position:absolute;
-  top:44px; left:50%; transform:translateX(-50%);
-  background:#1A2318;
-  border:1px solid #C0704A;
-  color:#C0A050;
-  font-size:10px;
-  font-family:monospace;
-  padding:5px 14px;
-  letter-spacing:.08em;
-  z-index:400;
-  opacity:0;
-  transition:opacity .3s;
-  pointer-events:none;
-  white-space:nowrap;
+  position:absolute; top:44px; left:50%; transform:translateX(-50%);
+  background:#1A2318; border:1px solid #C0704A;
+  color:#C0A050; font-size:10px; font-family:monospace;
+  padding:5px 14px; letter-spacing:.08em;
+  z-index:400; opacity:0; transition:opacity .3s;
+  pointer-events:none; white-space:nowrap;
 }
 #notif.show { opacity:1; }
 
 /* ── WINNER OVERLAY ── */
 #winner-overlay {
-  display:none;
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,.93);
-  z-index:9999;
-  align-items:center;
-  justify-content:center;
-  flex-direction:column;
-  text-align:center;
+  display:none; position:fixed; inset:0;
+  background:rgba(0,0,0,.93); z-index:9999;
+  align-items:center; justify-content:center;
+  flex-direction:column; text-align:center;
 }
 #winner-overlay.show { display:flex; }
 .winner-title {
-  font-family:'Orbitron',monospace;
-  font-size:2.8rem;
-  font-weight:900;
-  letter-spacing:.3em;
-  margin-bottom:.8rem;
+  font-family:'Orbitron',monospace; font-size:2.8rem;
+  font-weight:900; letter-spacing:.3em; margin-bottom:.8rem;
 }
 .won  { color:var(--green); text-shadow:0 0 40px var(--green),0 0 80px var(--green-dim); }
 .lost { color:var(--red);   text-shadow:0 0 40px var(--red); }
+.draw { color:var(--amber); text-shadow:0 0 40px var(--amber); }
 
 /* ─────────────────────────────────────────
-   FOOTER — POUCH ORIZONTAL
+   FOOTER — z:60, sub terminal (z:200)
 ───────────────────────────────────────── */
 #arena-footer {
   height:52px;
   background:var(--panel);
   border-top:1px solid var(--border);
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  padding:0 1.2rem;
-  gap:1rem;
-  flex-shrink:0;
-  z-index:10;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 var(--h-pad); gap:1rem; flex-shrink:0;
+  position:relative; z-index:60;
 }
 
-/* stânga / dreapta footer */
 .footer-left, .footer-right {
-  display:flex;
-  align-items:center;
-  gap:.5rem;
-  min-width:120px;
-  font-size:.65rem;
+  display:flex; align-items:center; gap:.5rem; min-width:120px; font-size:.65rem;
 }
 .footer-right { justify-content:flex-end; }
-.footer-tag {
-  color:var(--text-dim);
-  letter-spacing:.1em;
-  font-size:.58rem;
-}
+.footer-tag { color:var(--text-dim); letter-spacing:.1em; font-size:.58rem; }
 .footer-id {
-  color:var(--green-dim);
-  font-size:.6rem;
-  max-width:150px;
-  overflow:hidden;
-  text-overflow:ellipsis;
-  white-space:nowrap;
+  color:var(--green-dim); font-size:.6rem;
+  max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
 }
 .footer-role { font-size:.72rem; font-weight:bold; letter-spacing:.1em; }
 
-/* ── POUCH — pills orizontale în footer ── */
+/* ── POUCH ── */
 #pouch {
-  display:flex;
-  align-items:center;
-  gap:8px;
-  flex:1;
-  justify-content:center;
+  display:flex; align-items:center; gap:8px; flex:1; justify-content:center;
+}
+.pouch-empty-msg {
+  font-size:.65rem; color:var(--text-dim); letter-spacing:.08em; font-family:monospace;
 }
 
 .ability-pill {
   position:relative;
-  display:flex;
-  align-items:center;
-  gap:6px;
-  padding:0 14px 0 10px;
-  height:34px;
-  min-width:110px;
+  display:flex; align-items:center; gap:6px;
+  padding:0 14px 0 10px; height:34px; min-width:110px;
   background:rgba(10,20,10,0.82);
   border:1px solid var(--ab-color, #4A6741);
-  border-radius:999px;
-  cursor:pointer;
-  overflow:hidden;
+  border-radius:999px; cursor:pointer; overflow:hidden;
   transition:background .15s, box-shadow .15s;
   backdrop-filter:blur(4px);
 }
-.ability-pill:hover:not(.on-cd) {
+.ability-pill:hover:not(.used) {
   background:rgba(10,20,10,0.95);
-  box-shadow:0 0 10px color-mix(in srgb, var(--ab-color, #4A6741) 40%, transparent);
+  box-shadow:0 0 10px color-mix(in srgb, var(--ab-color,#4A6741) 40%, transparent);
 }
-.ability-pill.on-cd {
-  opacity:.55;
-  cursor:not-allowed;
-  border-style:dashed;
+.ability-pill.used {
+  opacity:.35; cursor:not-allowed; filter:grayscale(1);
+  border-style:dashed; border-color:#2a2a2a !important; pointer-events:none;
 }
 .ab-icon { font-size:13px; line-height:1; flex-shrink:0; }
 .ab-name {
-  font-size:9px;
-  color:var(--ab-color, #7A9E72);
+  font-size:9px; color:var(--ab-color,#7A9E72);
   font-family:'Share Tech Mono',monospace;
-  text-transform:uppercase;
-  letter-spacing:.12em;
-  flex:1;
-}
-.ab-cd-num {
-  font-size:10px;
-  color:var(--ab-color, #C0A050);
-  font-family:'Share Tech Mono',monospace;
-  font-weight:bold;
-  flex-shrink:0;
-}
-.ab-key {
-  font-size:9px;
-  color:var(--text-dim);
-  font-family:'Share Tech Mono',monospace;
-  flex-shrink:0;
+  text-transform:uppercase; letter-spacing:.12em; flex:1;
 }
 .ab-cd-progress {
-  position:absolute;
-  left:0; top:0; bottom:0;
-  background:color-mix(in srgb, var(--ab-color, #4A6741) 20%, transparent);
-  transition:width 1s linear;
-  pointer-events:none;
-  border-radius:999px;
+  position:absolute; left:0; top:0; bottom:0;
+  background:color-mix(in srgb,var(--ab-color,#4A6741) 20%,transparent);
+  transition:width 1s linear; pointer-events:none; border-radius:999px;
 }
-
+.ab-key { font-size:9px; color:var(--text-dim); font-family:'Share Tech Mono',monospace; flex-shrink:0; }
+.ab-used-tag { font-size:8px; color:#333; font-family:'Share Tech Mono',monospace; flex-shrink:0; letter-spacing:.06em; }
 
 /* =================== SKINS =================== */
-
 body.skin-dev-mode {
-  /* Folosim pozele tale specifice pentru acest mod */
   --sky-bg:    url('/assets/ceata.jpeg') repeat-x center / auto 100%;
   --ground-bg: url('/assets/nisip.jpeg') repeat center / auto auto;
   --sep-color: #2a1f1a;
-
-  /* Păstrăm culorile standard verde-neon pentru acest mod de test */
-  --green:     #00ff41;
-  --green-dim: #00aa2a;
-  --text:      #00cc33;
-  --amber:     #ffb300;
-  --bg:        #020d02;
-  --border:    #0a3a0a;
+  --green:#00ff41; --green-dim:#00aa2a; --text:#00cc33;
+  --amber:#ffb300; --bg:#020d02; --border:#0a3a0a;
 }
-
 body.skin-classic {
   --sky-bg:    linear-gradient(to bottom, #2C3E2D 60%, #C8D4C0 60%, #E8EDE4 62%);
-  --ground-bg: #C8B89A;
-  --sep-color: #2a1f1a;
+  --ground-bg: #C8B89A; --sep-color: #2a1f1a;
 }
-
 body.skin-cyberpunk {
   --sky-bg:    linear-gradient(to bottom, #0f0c29, #302b63);
   --ground-bg: linear-gradient(to bottom, #ff007f22, #240b36);
   --sep-color: #ff007f;
 }
-
 body.skin-wasteland {
   --sky-bg:    linear-gradient(to bottom, #3b2f2f, #8B5A2B);
-  --ground-bg: #4a3728;
-  --sep-color: #5a3a28;
+  --ground-bg: #4a3728; --sep-color: #5a3a28;
 }
-
 body.skin-space {
   --sky-bg:    radial-gradient(ellipse at top, #0a0a2e 0%, #000010 100%);
-  --ground-bg: #0a0a1a;
-  --sep-color: #1a1a4a;
+  --ground-bg: #0a0a1a; --sep-color: #1a1a4a;
 }

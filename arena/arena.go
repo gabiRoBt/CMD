@@ -18,12 +18,25 @@ const (
 	PhaseFinished   Phase = "finished"
 )
 
+// AbilityTokens — hash-uri random, injectate ca env vars în container.
+// Fișierele din ~/pouch/ sunt validate: basename ∋ key AND content == hash.
+type AbilityTokens struct {
+	Scramble string
+	Repair   string
+	Rocket   string
+	Sonar    string
+}
+
 type Player struct {
 	ID          string
 	Role        PlayerRole
+	PublicKey   string
 	ContainerID string
 	SSHPort     int
 	Ready       bool
+	Abilities   []string  // validate la final de setup
+	LastAttack  string    // ultima abilitate primită
+	AttackAt    time.Time // timestamp pentru repair kit (5s window)
 }
 
 type Arena struct {
@@ -36,27 +49,26 @@ type Arena struct {
 	StartedAt  time.Time
 	FinishedAt time.Time
 
-	SetupDuration time.Duration
+	SetupDuration  time.Duration
+	AttackDuration time.Duration
+
+	HostTokens  AbilityTokens
+	GuestTokens AbilityTokens
 }
 
 func NewArena(arenaID, hostPlayerID string) *Arena {
 	return &Arena{
-		ID: arenaID,
-		Host: &Player{
-			ID:   hostPlayerID,
-			Role: RoleHost,
-		},
-		Phase:         PhaseWaiting,
-		CreatedAt:     time.Now(),
-		SetupDuration: 90 * time.Second,
+		ID:             arenaID,
+		Host:           &Player{ID: hostPlayerID, Role: RoleHost},
+		Phase:          PhaseWaiting,
+		CreatedAt:      time.Now(),
+		SetupDuration:  150 * time.Second, // 2:30
+		AttackDuration: 300 * time.Second, // 5:00
 	}
 }
 
 func (a *Arena) JoinGuest(guestPlayerID string) {
-	a.Guest = &Player{
-		ID:   guestPlayerID,
-		Role: RoleGuest,
-	}
+	a.Guest = &Player{ID: guestPlayerID, Role: RoleGuest}
 }
 
 func (a *Arena) BothReady() bool {

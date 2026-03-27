@@ -16,6 +16,7 @@ func main() {
 		log.Fatalf("EROARE: %v\nAsigură-te că Docker rulează.", err)
 	}
 	fmt.Println("✓ Conectat la Docker")
+	fmt.Println("✓ MasterKey SSH generată")
 
 	hub := arena.NewHub()
 	go hub.Run()
@@ -29,8 +30,6 @@ func main() {
 	}
 
 	fmt.Printf("✓ Server pornit pe http://localhost:%d\n", port)
-	fmt.Println("  Deschide browserul pentru lobby.")
-
 	if err := server.Start(port); err != nil {
 		log.Fatalf("Server error: %v", err)
 	}

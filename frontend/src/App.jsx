@@ -4,103 +4,125 @@ import Arena from './components/Arena';
 import { i18n } from './i18n';
 
 function App() {
-  const [lang, setLang] = useState('ro');
-  const [skin, setSkin] = useState('skin-classic');
+  const [lang, setLang]       = useState('ro');
+  const [skin, setSkin]       = useState('skin-classic');
   const [playerID, setPlayerID] = useState(null);
-  const [arenaID, setArenaID] = useState(null);
-  const [role, setRole] = useState(null);
-  const [phase, setPhase] = useState(null);
-
+  const [arenaID, setArenaID]   = useState(null);
+  const [role, setRole]         = useState(null);
+  const [phase, setPhase]       = useState(null);
   const [wsStatus, setWsStatus] = useState('OFFLINE');
   const [arenaList, setArenaList] = useState([]);
-  const [view, setView] = useState('lobby'); // 'lobby' sau 'arena'
-  const [setupSecs, setSetupSecs] = useState(0);
+  const [view, setView]         = useState('lobby');
+  const [countdown, setCountdown] = useState(0);
+  const [abilities, setAbilities] = useState([]);
 
-  const wsRef = useRef(null);
+  const wsRef        = useRef(null);
+  const countdownRef = useRef(null);
   const t = i18n[lang];
 
-  // Aplicăm skin-ul pe body când se schimbă
-  useEffect(() => {
-    document.body.className = skin;
-  }, [skin]);
+  useEffect(() => { document.body.className = skin; }, [skin]);
+
+  const startCountdown = (secs) => {
+    clearInterval(countdownRef.current);
+    setCountdown(secs);
+    countdownRef.current = setInterval(() => {
+      setCountdown(c => { if (c <= 1) { clearInterval(countdownRef.current); return 0; } return c - 1; });
+    }, 1000);
+  };
+
+  const fmt = (s) =>
+      `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
 
   const connectWS = (id) => {
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
     const ws = new WebSocket(`${proto}://${location.host}/ws?player_id=${encodeURIComponent(id)}`);
     wsRef.current = ws;
-
-    ws.onopen = () => setWsStatus('ONLINE');
-    ws.onclose = () => {
-      setWsStatus('OFFLINE');
-      setTimeout(() => connectWS(id), 3000);
-    };
+    ws.onopen  = () => setWsStatus('ONLINE');
+    ws.onclose = () => { setWsStatus('OFFLINE'); setTimeout(() => connectWS(id), 3000); };
     ws.onmessage = (ev) => {
-      try {
-        const data = JSON.parse(ev.data);
-        handleWSEvent(data);
-      } catch (e) { console.error(e); }
+      try { handleWSEvent(JSON.parse(ev.data)); } catch (e) { console.error(e); }
     };
   };
 
   const handleWSEvent = (ev) => {
     switch (ev.type) {
-      case 'arena_list': setArenaList(ev.payload); break;
+      case 'arena_list':   setArenaList(ev.payload ?? []); break;
       case 'game_start':
         setPhase(ev.payload.phase);
-        setSetupSecs(ev.payload.setup_seconds || 90);
-        setView('arena'); // Schimbăm vizualizarea spre Arenă!
+        setAbilities([]);
+        startCountdown(ev.payload.setup_seconds || 150);
+        setView('arena');
         break;
-      case 'phase_change': setPhase(ev.payload.phase); break;
+      case 'phase_change':
+        setPhase(ev.payload.phase);
+        if (ev.payload.phase === 'infiltrate') startCountdown(300);
+        break;
+      case 'pouch_result':
+        setAbilities(ev.payload.abilities ?? []);
+        break;
       case 'game_over':
-        // Aici vom trimite un event către componenta Arena mai târziu
         window.dispatchEvent(new CustomEvent('gameOver', { detail: ev.payload }));
+        clearInterval(countdownRef.current);
         break;
       default: break;
     }
   };
 
+  // Jucătorul introduce doar username — fără cheie SSH
   const identify = (id) => {
     setPlayerID(id);
     connectWS(id);
   };
 
+  const phaseColor = phase === 'infiltrate' ? 'var(--red)' : 'var(--amber)';
+
   return (
       <>
         <header>
+          {/* Stânga — logo */}
           <div className="logo">CMD<span>::</span>ARENA</div>
+
+          {/* Centru — countdown (aliniat cu centrul phase-bar din arenă) */}
+          <div className="header-center">
+            {view === 'arena' && countdown > 0 && (
+                <span className="header-countdown" style={{ color: phaseColor }}>
+              {fmt(countdown)}
+            </span>
+            )}
+          </div>
+
+          {/* Dreapta — status */}
           <div className="status-bar">
-            {/* În App.jsx, caută selectorul de skin-uri în header */}
-            <select className="header-select" value={skin} onChange={(e) => setSkin(e.target.value)}>
+            <select className="header-select" value={skin} onChange={e => setSkin(e.target.value)}>
               <option value="skin-classic">SKIN: CLASSIC</option>
               <option value="skin-cyberpunk">SKIN: CYBERPUNK</option>
               <option value="skin-wasteland">SKIN: WASTELAND</option>
               <option value="skin-dev-mode">SKIN: DEV MODE</option>
             </select>
-            <select className="header-select" value={lang} onChange={(e) => setLang(e.target.value)}>
+            <select className="header-select" value={lang} onChange={e => setLang(e.target.value)}>
               <option value="ro">RO</option>
               <option value="en">EN</option>
             </select>
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-                <span className="dot" style={{ background: wsStatus === 'ONLINE' ? 'var(--green)' : 'var(--red)' }}></span>
-                <span style={{ color: wsStatus === 'ONLINE' ? 'var(--green)' : 'var(--red)' }}>
-                {wsStatus === 'ONLINE' ? t.wsOnline : t.wsOffline}
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'flex-end' }}>
+                <span className="dot" style={{ background: wsStatus==='ONLINE' ? 'var(--green)' : 'var(--red)' }}></span>
+                <span style={{ color: wsStatus==='ONLINE' ? 'var(--green)' : 'var(--red)' }}>
+                {wsStatus==='ONLINE' ? t.wsOnline : t.wsOffline}
               </span>
               </div>
-              {playerID && <div style={{ color: 'var(--green-dim)', marginTop: '.2rem' }}>{'>>'} {playerID}</div>}            </div>
+              {playerID && <div style={{ color:'var(--green-dim)', marginTop:'.2rem' }}>{'>>'} {playerID}</div>}
+            </div>
           </div>
         </header>
 
-        {/* RUTELE NOASTRE (Ce afișăm pe ecran) */}
         {view === 'lobby' ? (
             <Lobby
                 t={t}
-                lang={lang}
                 playerID={playerID}
                 arenaID={arenaID}
                 arenaList={arenaList}
                 onIdentify={identify}
-                onUpdateArena={(id, role) => { setArenaID(id); setRole(role); }}
+                onUpdateArena={(id, r) => { setArenaID(id); setRole(r); }}
                 onLeaveArena={() => { setArenaID(null); setRole(null); }}
             />
         ) : (
@@ -110,7 +132,7 @@ function App() {
                 playerID={playerID}
                 role={role}
                 phase={phase}
-                setupSecs={setupSecs}
+                abilities={abilities}
             />
         )}
       </>

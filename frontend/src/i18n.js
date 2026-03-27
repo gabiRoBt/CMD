@@ -7,9 +7,16 @@ export const i18n = {
         phaseSetup: "◼ SETUP PHASE", phaseInfil: "⚔ INFILTRATE PHASE",
         lblSysYou: "SYS INTEGRITY (YOU)", lblSysEnemy: "SYS INTEGRITY (ENEMY)", termTitle: "CMD :: SECURE TERMINAL",
         notifSetup: "FAZA SETUP: ASCUNDE PAROLA ÎN CONTAINER", notifInfil: "FAZA INFILTRATE: ATACĂ INAMICUL", notifOnlyInfil: "DOAR IN FAZA INFILTRATE!",
-        winTitle: "☢ VICTORIE", loseTitle: "✗ ÎNFRÂNGERE", btnRestart: "[ ↺ ] JOACĂ DIN NOU",
-        abStrikeEf: "TERMINAL INAMIC BLOCAT - 5s", abScrambleEf: "LS/FIND INAMIC BRUIAT - 15s", abShieldEf: "SCUT ACTIVAT", abSonarEf: "PING TRIMIS",
-        wsOnline: "ONLINE", wsOffline: "OFFLINE", errName: "Introdu un nume!", hostText: "HOST:", guestText: "GUEST:", waitText: "așteaptă..."
+        winTitle: "☢ VICTORIE", loseTitle: "✗ ÎNFRÂNGERE", drawTitle: "— REMIZĂ —", btnRestart: "[ ↺ ] JOACĂ DIN NOU",
+        // Abilități — efecte afișate în notificare la utilizare
+        abScrambleEf: "COMENZI INAMIC AMESTECATE",
+        abRepairEf:   "REPARAȚIE ACTIVATĂ — ANULEAZĂ ULTIMUL ATAC",
+        abRocketEf:   "INPUT INAMIC BLOCAT — 10s",
+        abSonarEf:    "DIRECTOARE GOALE ȘTERSE LA INAMIC",
+        // Stare pouch în footer înainte de validare
+        pouchHintSetup: "[ mv weapon_*.bin ~/pouch/ ]",
+        wsOnline: "ONLINE", wsOffline: "OFFLINE", errName: "Introdu un nume!",
+        hostText: "HOST:", guestText: "GUEST:", waitText: "așteaptă..."
     },
     en: {
         titleLobby: "// IDENTIFICATION", lblCallsign: "CALLSIGN (Player Name)", btnConnect: "CONNECT TO NETWORK",
@@ -19,8 +26,13 @@ export const i18n = {
         phaseSetup: "◼ SETUP PHASE", phaseInfil: "⚔ INFILTRATE PHASE",
         lblSysYou: "SYS INTEGRITY (YOU)", lblSysEnemy: "SYS INTEGRITY (ENEMY)", termTitle: "CMD :: SECURE TERMINAL",
         notifSetup: "SETUP PHASE: HIDE YOUR PASSWORD", notifInfil: "INFILTRATE PHASE: ATTACK THE ENEMY", notifOnlyInfil: "ONLY IN INFILTRATE PHASE!",
-        winTitle: "☢ VICTORY", loseTitle: "✗ DEFEAT", btnRestart: "[ ↺ ] PLAY AGAIN",
-        abStrikeEf: "ENEMY TERMINAL LOCKED - 5s", abScrambleEf: "ENEMY LS/FIND SCRAMBLED - 15s", abShieldEf: "SHIELD ACTIVATED", abSonarEf: "PING SENT",
-        wsOnline: "ONLINE", wsOffline: "OFFLINE", errName: "Enter a callsign!", hostText: "HOST:", guestText: "GUEST:", waitText: "waiting..."
+        winTitle: "☢ VICTORY", loseTitle: "✗ DEFEAT", drawTitle: "— DRAW —", btnRestart: "[ ↺ ] PLAY AGAIN",
+        abScrambleEf: "ENEMY COMMANDS SCRAMBLED",
+        abRepairEf:   "REPAIR KIT ACTIVATED — CANCELS LAST ATTACK",
+        abRocketEf:   "ENEMY INPUT LOCKED — 10s",
+        abSonarEf:    "ENEMY EMPTY FOLDERS DELETED",
+        pouchHintSetup: "[ mv weapon_*.bin ~/pouch/ ]",
+        wsOnline: "ONLINE", wsOffline: "OFFLINE", errName: "Enter a callsign!",
+        hostText: "HOST:", guestText: "GUEST:", waitText: "waiting..."
     }
 };
