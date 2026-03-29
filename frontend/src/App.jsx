@@ -4,15 +4,15 @@ import Arena from './components/Arena';
 import { i18n } from './i18n';
 
 function App() {
-  const [lang, setLang]       = useState('ro');
-  const [skin, setSkin]       = useState('skin-classic');
-  const [playerID, setPlayerID] = useState(null);
-  const [arenaID, setArenaID]   = useState(null);
-  const [role, setRole]         = useState(null);
-  const [phase, setPhase]       = useState(null);
-  const [wsStatus, setWsStatus] = useState('OFFLINE');
+  const [lang, setLang]           = useState('ro');
+  const [skin, setSkin]           = useState('skin-dev-mode');
+  const [playerID, setPlayerID]   = useState(null);
+  const [arenaID, setArenaID]     = useState(null);
+  const [role, setRole]           = useState(null);
+  const [phase, setPhase]         = useState(null);
+  const [wsStatus, setWsStatus]   = useState('OFFLINE');
   const [arenaList, setArenaList] = useState([]);
-  const [view, setView]         = useState('lobby');
+  const [view, setView]           = useState('lobby');
   const [countdown, setCountdown] = useState(0);
   const [abilities, setAbilities] = useState([]);
 
@@ -30,8 +30,7 @@ function App() {
     }, 1000);
   };
 
-  const fmt = (s) =>
-      `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+  const fmt = (s) => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
 
   const connectWS = (id) => {
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
@@ -39,39 +38,32 @@ function App() {
     wsRef.current = ws;
     ws.onopen  = () => setWsStatus('ONLINE');
     ws.onclose = () => { setWsStatus('OFFLINE'); setTimeout(() => connectWS(id), 3000); };
-    ws.onmessage = (ev) => {
-      try { handleWSEvent(JSON.parse(ev.data)); } catch (e) { console.error(e); }
-    };
+    ws.onmessage = (ev) => { try { handleWSEvent(JSON.parse(ev.data)); } catch(e) { console.error(e); } };
   };
 
   const handleWSEvent = (ev) => {
     switch (ev.type) {
-      case 'arena_list':   setArenaList(ev.payload ?? []); break;
+      case 'arena_list':    setArenaList(ev.payload ?? []); break;
       case 'game_start':
-        setPhase(ev.payload.phase);
-        setAbilities([]);
+        setPhase(ev.payload.phase); setAbilities([]);
         startCountdown(ev.payload.setup_seconds || 150);
-        setView('arena');
-        break;
+        setView('arena'); break;
       case 'phase_change':
         setPhase(ev.payload.phase);
-        if (ev.payload.phase === 'infiltrate') startCountdown(300);
-        break;
-      case 'pouch_result':
-        setAbilities(ev.payload.abilities ?? []);
-        break;
+        if (ev.payload.phase === 'infiltrate') startCountdown(300); break;
+      case 'pouch_result':  setAbilities(ev.payload.abilities ?? []); break;
       case 'game_over':
         window.dispatchEvent(new CustomEvent('gameOver', { detail: ev.payload }));
-        clearInterval(countdownRef.current);
-        break;
+        clearInterval(countdownRef.current); break;
       default: break;
     }
   };
 
-  // Jucătorul introduce doar username — fără cheie SSH
-  const identify = (id) => {
-    setPlayerID(id);
-    connectWS(id);
+  const identify = (id) => { setPlayerID(id); connectWS(id); };
+
+  const returnToLobby = () => {
+    setView('lobby'); setArenaID(null); setRole(null);
+    setPhase(null); setAbilities([]); setCountdown(0);
   };
 
   const phaseColor = phase === 'infiltrate' ? 'var(--red)' : 'var(--amber)';
@@ -79,25 +71,18 @@ function App() {
   return (
       <>
         <header>
-          {/* Stânga — logo */}
           <div className="logo">CMD<span>::</span>ARENA</div>
-
-          {/* Centru — countdown (aliniat cu centrul phase-bar din arenă) */}
           <div className="header-center">
             {view === 'arena' && countdown > 0 && (
-                <span className="header-countdown" style={{ color: phaseColor }}>
-              {fmt(countdown)}
-            </span>
+                <span className="header-countdown" style={{ color: phaseColor }}>{fmt(countdown)}</span>
             )}
           </div>
-
-          {/* Dreapta — status */}
           <div className="status-bar">
             <select className="header-select" value={skin} onChange={e => setSkin(e.target.value)}>
-              <option value="skin-classic">SKIN: CLASSIC</option>
-              <option value="skin-cyberpunk">SKIN: CYBERPUNK</option>
-              <option value="skin-wasteland">SKIN: WASTELAND</option>
               <option value="skin-dev-mode">SKIN: DEV MODE</option>
+              <option value="skin-classic">SKIN: SIBERIA</option>
+              <option value="skin-cyberpunk">SKIN: RETRO</option>
+              <option value="skin-wasteland">SKIN: WASTELAND</option>
             </select>
             <select className="header-select" value={lang} onChange={e => setLang(e.target.value)}>
               <option value="ro">RO</option>
@@ -105,9 +90,9 @@ function App() {
             </select>
             <div>
               <div style={{ display:'flex', alignItems:'center', justifyContent:'flex-end' }}>
-                <span className="dot" style={{ background: wsStatus==='ONLINE' ? 'var(--green)' : 'var(--red)' }}></span>
-                <span style={{ color: wsStatus==='ONLINE' ? 'var(--green)' : 'var(--red)' }}>
-                {wsStatus==='ONLINE' ? t.wsOnline : t.wsOffline}
+                <span className="dot" style={{ background: wsStatus==='ONLINE'?'var(--green)':'var(--red)' }}></span>
+                <span style={{ color: wsStatus==='ONLINE'?'var(--green)':'var(--red)' }}>
+                {wsStatus==='ONLINE'?t.wsOnline:t.wsOffline}
               </span>
               </div>
               {playerID && <div style={{ color:'var(--green-dim)', marginTop:'.2rem' }}>{'>>'} {playerID}</div>}
@@ -116,24 +101,14 @@ function App() {
         </header>
 
         {view === 'lobby' ? (
-            <Lobby
-                t={t}
-                playerID={playerID}
-                arenaID={arenaID}
-                arenaList={arenaList}
-                onIdentify={identify}
-                onUpdateArena={(id, r) => { setArenaID(id); setRole(r); }}
-                onLeaveArena={() => { setArenaID(null); setRole(null); }}
-            />
+            <Lobby t={t} playerID={playerID} arenaID={arenaID} arenaList={arenaList}
+                   onIdentify={identify}
+                   onUpdateArena={(id,r) => { setArenaID(id); setRole(r); }}
+                   onLeaveArena={() => { setArenaID(null); setRole(null); }} />
         ) : (
-            <Arena
-                t={t}
-                arenaID={arenaID}
-                playerID={playerID}
-                role={role}
-                phase={phase}
-                abilities={abilities}
-            />
+            <Arena t={t} arenaID={arenaID} playerID={playerID} role={role}
+                   phase={phase} abilities={abilities} skin={skin}
+                   onReturnToLobby={returnToLobby} />
         )}
       </>
   );
