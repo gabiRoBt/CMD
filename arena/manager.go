@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"log"
-	mathrand "math/rand"
 	"net"
 	"strings"
 	"time"
@@ -146,8 +145,12 @@ func (m *Manager) SetReady(arenaID, playerID string) (*Arena, error) {
 	default:
 		return nil, fmt.Errorf("jucătorul %s nu e în arena %s", playerID, arenaID)
 	}
-	if a.BothReady() {
+
+	// Prevenim execuții multiple setând faza intermediară "starting"
+	if a.BothReady() && a.Phase == PhaseWaiting {
+		a.Phase = "starting"
 		if err := m.startContainers(a); err != nil {
+			a.Phase = PhaseWaiting // Rollback faza dacă pică pornirea
 			return nil, fmt.Errorf("eroare la pornirea containerelor: %w", err)
 		}
 	}
@@ -195,7 +198,6 @@ func (m *Manager) startContainers(a *Arena) error {
 
 func (m *Manager) spawnContainer(arenaID, role string, tokens AbilityTokens) (int, string, error) {
 	ctx := context.Background()
-	sshPort := mathrand.Intn(10000) + 30000
 
 	resp, err := m.docker.ContainerCreate(
 		ctx,
@@ -215,11 +217,10 @@ func (m *Manager) spawnContainer(arenaID, role string, tokens AbilityTokens) (in
 		&container.HostConfig{
 			PortBindings: nat.PortMap{
 				"22/tcp": []nat.PortBinding{
-					{HostIP: "0.0.0.0", HostPort: fmt.Sprintf("%d", sshPort)},
+					{HostIP: "0.0.0.0", HostPort: "0"}, // Docker își alege singur un port liber 100% sigur
 				},
 			},
-			// Setăm AutoRemove: containerul se șterge singur când se oprește
-			AutoRemove:  true,
+			AutoRemove:  false, // Controlăm noi ștergerea containerelor prin cleanup
 			NetworkMode: "bridge",
 			Resources: container.Resources{
 				Memory:    MaxMemoryBytes,
@@ -235,10 +236,30 @@ func (m *Manager) spawnContainer(arenaID, role string, tokens AbilityTokens) (in
 	if err != nil {
 		return 0, "", fmt.Errorf("ContainerCreate: %w", err)
 	}
+
 	if err := m.docker.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
+		m.forceRemove(resp.ID)
 		return 0, "", fmt.Errorf("ContainerStart: %w", err)
 	}
-	return sshPort, resp.ID, nil
+
+	// Inspectăm container-ul ca să vedem ce port i-a alocat Docker efectiv
+	inspect, err := m.docker.ContainerInspect(ctx, resp.ID)
+	if err != nil {
+		m.forceRemove(resp.ID)
+		return 0, resp.ID, fmt.Errorf("ContainerInspect: %w", err)
+	}
+
+	var assignedPort int
+	if bindings, ok := inspect.NetworkSettings.Ports["22/tcp"]; ok && len(bindings) > 0 {
+		fmt.Sscanf(bindings[0].HostPort, "%d", &assignedPort)
+	}
+
+	if assignedPort == 0 {
+		m.forceRemove(resp.ID)
+		return 0, resp.ID, fmt.Errorf("nu am putut extrage portul SSH din Docker")
+	}
+
+	return assignedPort, resp.ID, nil
 }
 
 func waitForSSH(host string, port int, timeout time.Duration) error {
@@ -469,13 +490,14 @@ func (m *Manager) checkNukeFile(containerID string) bool {
 	return false
 }
 
-// stopContainer oprește un container. Dacă AutoRemove=true, Docker îl și șterge automat.
+// stopContainer oprește un container și se asigură că este șters complet.
 func (m *Manager) stopContainer(containerID string) {
 	timeout := 3
 	ctx := context.Background()
 	if err := m.docker.ContainerStop(ctx, containerID, container.StopOptions{Timeout: &timeout}); err != nil {
 		log.Printf("[Cleanup] Stop %s: %v", containerID[:12], err)
 	}
+	m.forceRemove(containerID) // Efectuează mereu cleanup după oprire
 }
 
 // forceRemove șterge forțat un container (folosit la erori de startup).
@@ -487,7 +509,6 @@ func (m *Manager) forceRemove(containerID string) {
 }
 
 // cleanup oprește ambele containere și șterge arena din memorie.
-// Cu AutoRemove=true, containerele se șterg singure la oprire.
 func (m *Manager) cleanup(a *Arena) {
 	log.Printf("[Arena %s] Cleanup — șterg containerele", a.ID)
 	if a.Host.ContainerID != "" {

@@ -290,6 +290,8 @@ export default function Arena({ t, arenaID, playerID, role, phase, abilities = [
     const canvasRef   = useRef(null);
     const wsRef       = useRef(null);
     const fitAddonRef = useRef(null);
+    const lineCanvasRef = useRef(null);
+    const rafRef        = useRef(null);
 
     const BaseComponent = SKIN_BASES[skin] || BaseDevMode;
 
@@ -357,6 +359,100 @@ export default function Arena({ t, arenaID, playerID, role, phase, abilities = [
         window.addEventListener('gameOver', handler);
         return () => window.removeEventListener('gameOver', handler);
     }, [t]);
+
+    useEffect(() => {
+        const canvas = lineCanvasRef.current;
+        if (!canvas) return;
+        const resize = () => {
+            canvas.width  = window.innerWidth;
+            canvas.height = window.innerHeight;
+        };
+        resize();
+        window.addEventListener('resize', resize);
+        return () => window.removeEventListener('resize', resize);
+    }, []);
+
+    useEffect(() => {
+        const canvas = lineCanvasRef.current;
+        if (!canvas) return;
+
+        let offset = 0;
+
+        const draw = () => {
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const termWin = termWinRef.current;
+            if (!termWin) { rafRef.current = requestAnimationFrame(draw); return; }
+
+            // Vârful tail-ului bubble: colțul stânga-jos al terminalului
+            const tRect = termWin.getBoundingClientRect();
+            const sx = tRect.left + 7;
+            const sy = tRect.bottom + 12;
+
+            // Setup → propria bază (stânga), Infiltrate → baza inamică (dreapta)
+            const baseEl = document.querySelector(
+                phase === 'infiltrate' ? '.right-base-pos' : '.left-base-pos'
+            );
+            if (!baseEl) { rafRef.current = requestAnimationFrame(draw); return; }
+
+            const bRect = baseEl.getBoundingClientRect();
+            const ex    = bRect.left + bRect.width / 2;
+            const ey    = bRect.top  + bRect.height * 0.15;
+
+            const isEnemy = phase === 'infiltrate';
+            const color   = isEnemy ? '#C0704A' : '#00ff41';
+            const label   = isEnemy ? 'ENEMY SYSTEM' : 'YOUR BASE';
+
+            // Control point pentru curba quadratic
+            const cpx = (sx + ex) / 2;
+            const cpy = Math.min(sy, ey) - 50;
+
+            // Linia animată
+            offset = (offset + 0.5) % 26;
+            ctx.save();
+            ctx.strokeStyle    = color;
+            ctx.lineWidth      = 1.5;
+            ctx.setLineDash([8, 5]);
+            ctx.lineDashOffset = -offset;
+            ctx.globalAlpha    = 0.7;
+            ctx.beginPath();
+            ctx.moveTo(sx, sy);
+            ctx.quadraticCurveTo(cpx, cpy, ex, ey);
+            ctx.stroke();
+            ctx.restore();
+
+            // Punct la baza țintă
+            ctx.save();
+            ctx.fillStyle   = color;
+            ctx.globalAlpha = 0.9;
+            ctx.beginPath();
+            ctx.arc(ex, ey, 4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+            // Label lângă mijlocul curbei
+            ctx.save();
+            ctx.font        = '9px "Share Tech Mono", monospace';
+            ctx.fillStyle   = color;
+            ctx.textAlign   = 'center';
+            ctx.globalAlpha = 0.65;
+            ctx.fillText(label, cpx, cpy + 28);
+            ctx.restore();
+
+            rafRef.current = requestAnimationFrame(draw);
+        };
+
+        rafRef.current = requestAnimationFrame(draw);
+
+        return () => {
+            cancelAnimationFrame(rafRef.current);
+            const canvas = lineCanvasRef.current;
+            if (canvas) {
+                canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+            }
+        };
+    }, [phase]); // se re-rulează când se schimbă faza
 
     const showNotif = (msg) => { setNotif({ show:true, msg }); setTimeout(() => setNotif({ show:false, msg:'' }), 3000); };
 
@@ -475,6 +571,9 @@ export default function Arena({ t, arenaID, playerID, role, phase, abilities = [
 
     return (
         <div className="arena-wrapper">
+            <div style={{position:'fixed',top:60,right:10,zIndex:9999,background:'red',color:'white',fontSize:12,padding:4}}>
+                phase: {String(phase)} | base: {String(!!document.querySelector('.left-base-pos'))}
+            </div>
             <div id="arena" ref={arenaRef}>
                 <div className="top-band"></div>
                 <div className="band-separator"></div>
@@ -524,6 +623,16 @@ export default function Arena({ t, arenaID, playerID, role, phase, abilities = [
                     </div>
                 )}
             </div>
+
+            <canvas
+                ref={lineCanvasRef}
+                style={{
+                    position:      'fixed',
+                    inset:         0,
+                    pointerEvents: 'none',
+                    zIndex:        199,   // sub terminal (z:200), peste footer (z:60)
+                }}
+            />
 
             <div id="terminal-win" ref={termWinRef}>
                 <div className="term-bubble-tail"></div>

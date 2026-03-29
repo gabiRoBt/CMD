@@ -2,7 +2,7 @@ export const i18n = {
     ro: {
         titleLobby: "// IDENTIFICARE", lblCallsign: "CALLSIGN (Nume jucător)", btnConnect: "CONECTARE LA REȚEA",
         titleArena: "// ARENĂ", btnCreate: "[ + ] CREAZĂ ARENĂ", btnJoin: "[ → ] ALĂTURĂ-TE", btnReady: "[ ✓ ] SUNT READY", btnLeave: "[ X ] LEAVE",
-        statusWaitPeer: "Așteaptă un adversar, apoi fă Ready.", statusReadyGo: "Fă Ready când ești pregătit.", statusPrep: "Se pregătesc containerele...",
+        statusWaitPeer: "Așteaptă un adversar, apoi apasă SUNT READY.", statusReadyGo: "Apasă SUNT READY când ești pregătit.", statusPrep: "Se pregătesc containerele...",
         titleList: "// ARENE DISPONIBILE", emptyList: "Nicio arenă activă.", btnRefresh: "[ ↻ ] REFRESH",
         phaseSetup: "◼ SETUP PHASE", phaseInfil: "⚔ INFILTRATE PHASE",
         lblSysYou: "SYS INTEGRITY (YOU)", lblSysEnemy: "SYS INTEGRITY (ENEMY)", termTitle: "CMD :: SECURE TERMINAL",
