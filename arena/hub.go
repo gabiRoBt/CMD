@@ -16,6 +16,7 @@ const (
 	EventGameStart    EventType = "game_start"
 	EventPhaseChange  EventType = "phase_change"
 	EventPouchResult  EventType = "pouch_result" // abilități validate după setup
+	EventHPUpdate     EventType = "hp_update"    // actualizare integritate sistem
 	EventGameOver     EventType = "game_over"
 	EventError        EventType = "error"
 )
@@ -44,6 +45,13 @@ type PhaseChangePayload struct {
 type PouchResultPayload struct {
 	ArenaID   string   `json:"arena_id"`
 	Abilities []string `json:"abilities"` // ex: ["scramble", "rocket"]
+}
+
+// HPUpdatePayload — trimis după fiecare abilitate / repair cu HP-ul actualizat.
+type HPUpdatePayload struct {
+	ArenaID  string `json:"arena_id"`
+	TargetID string `json:"target_id"` // ID-ul jucătorului al cărui HP s-a modificat
+	HP       int    `json:"hp"`        // valoarea nouă 0-100
 }
 
 type GameOverPayload struct {

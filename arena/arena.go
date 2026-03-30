@@ -37,6 +37,7 @@ type Player struct {
 	Abilities   []string  // validate la final de setup
 	LastAttack  string    // ultima abilitate primită
 	AttackAt    time.Time // timestamp pentru repair kit (5s window)
+	HP          int       // integritate sistem: 0–100
 }
 
 type Arena struct {
@@ -59,7 +60,7 @@ type Arena struct {
 func NewArena(arenaID, hostPlayerID string) *Arena {
 	return &Arena{
 		ID:             arenaID,
-		Host:           &Player{ID: hostPlayerID, Role: RoleHost},
+		Host:           &Player{ID: hostPlayerID, Role: RoleHost, HP: 100},
 		Phase:          PhaseWaiting,
 		CreatedAt:      time.Now(),
 		SetupDuration:  150 * time.Second, // 2:30
@@ -68,7 +69,7 @@ func NewArena(arenaID, hostPlayerID string) *Arena {
 }
 
 func (a *Arena) JoinGuest(guestPlayerID string) {
-	a.Guest = &Player{ID: guestPlayerID, Role: RoleGuest}
+	a.Guest = &Player{ID: guestPlayerID, Role: RoleGuest, HP: 100}
 }
 
 func (a *Arena) BothReady() bool {

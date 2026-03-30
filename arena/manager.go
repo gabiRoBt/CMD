@@ -29,6 +29,15 @@ const (
 	ContainerPrefix = "cmd-arena-"
 )
 
+// Damage / heal constants — suma maximă de damage din abilități: 60 HP,
+// deci HP nu ajunge la 0 doar din abilități; victoria rămâne prin nuke.
+const (
+	dmgScramble = 20
+	dmgRocket   = 25
+	dmgSonar    = 15
+	healRepair  = 15
+)
+
 type Manager struct {
 	docker     *client.Client
 	arenas     map[string]*Arena
@@ -341,21 +350,37 @@ func (m *Manager) ValidatePouch(containerID string, tokens AbilityTokens) []stri
 
 // ── Ability execution ────────────────────────────────────────────────────────────
 
+// ExecuteAbility aplică abilitatea pe containerul țintă și scade HP-ul corespunzător.
+// Returnează eroarea (dacă există) — HP-ul e deja actualizat în structura Player.
 func (m *Manager) ExecuteAbility(targetContainerID, ability string, targetPlayer *Player) error {
 	targetPlayer.LastAttack = ability
 	targetPlayer.AttackAt = time.Now()
 	switch ability {
 	case "scramble":
+		targetPlayer.HP -= dmgScramble
+		if targetPlayer.HP < 0 {
+			targetPlayer.HP = 0
+		}
 		return m.execScramble(targetContainerID)
 	case "rocket":
+		targetPlayer.HP -= dmgRocket
+		if targetPlayer.HP < 0 {
+			targetPlayer.HP = 0
+		}
 		return m.execRocket(targetContainerID)
 	case "sonar":
+		targetPlayer.HP -= dmgSonar
+		if targetPlayer.HP < 0 {
+			targetPlayer.HP = 0
+		}
 		return m.execSonar(targetContainerID)
 	default:
 		return fmt.Errorf("abilitate necunoscută: %s", ability)
 	}
 }
 
+// ExecuteRepair anulează efectul ultimului atac primit (în fereastra de 5s)
+// și recuperează HP-ul corespunzător. Returnează eroarea dacă fereastra a expirat.
 func (m *Manager) ExecuteRepair(myPlayer *Player) error {
 	if myPlayer.LastAttack == "" {
 		return fmt.Errorf("nu există atac de reparat")
@@ -367,11 +392,19 @@ func (m *Manager) ExecuteRepair(myPlayer *Player) error {
 	case "scramble":
 		err := m.dockerExec(myPlayer.ContainerID, []string{"bash", "-c",
 			`printf '' > /home/player/.bash_aliases 2>/dev/null; true`})
+		myPlayer.HP += healRepair
+		if myPlayer.HP > 100 {
+			myPlayer.HP = 100
+		}
 		myPlayer.LastAttack = ""
 		return err
 	case "rocket":
 		err := m.dockerExec(myPlayer.ContainerID, []string{"bash", "-c",
 			`pids=$(pgrep -u player -f bash 2>/dev/null); [ -n "$pids" ] && kill -CONT $pids 2>/dev/null; true`})
+		myPlayer.HP += healRepair
+		if myPlayer.HP > 100 {
+			myPlayer.HP = 100
+		}
 		myPlayer.LastAttack = ""
 		return err
 	default:

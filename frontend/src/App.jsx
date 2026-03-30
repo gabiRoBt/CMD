@@ -15,9 +15,13 @@ function App() {
   const [view, setView]           = useState('lobby');
   const [countdown, setCountdown] = useState(0);
   const [abilities, setAbilities] = useState([]);
+  const [myHP, setMyHP]           = useState(100);
+  const [enemyHP, setEnemyHP]     = useState(100);
 
   const wsRef        = useRef(null);
   const countdownRef = useRef(null);
+  // păstrăm playerID în ref ca să fie accesibil în closure-ul WS fără stale state
+  const playerIDRef  = useRef(null);
   const t = i18n[lang];
 
   useEffect(() => { document.body.className = skin; }, [skin]);
@@ -43,27 +47,58 @@ function App() {
 
   const handleWSEvent = (ev) => {
     switch (ev.type) {
-      case 'arena_list':    setArenaList(ev.payload ?? []); break;
+      case 'arena_list':
+        setArenaList(ev.payload ?? []);
+        break;
       case 'game_start':
-        setPhase(ev.payload.phase); setAbilities([]);
+        setPhase(ev.payload.phase);
+        setAbilities([]);
+        setMyHP(100);
+        setEnemyHP(100);
         startCountdown(ev.payload.setup_seconds || 150);
-        setView('arena'); break;
+        setView('arena');
+        break;
       case 'phase_change':
         setPhase(ev.payload.phase);
-        if (ev.payload.phase === 'infiltrate') startCountdown(300); break;
-      case 'pouch_result':  setAbilities(ev.payload.abilities ?? []); break;
+        if (ev.payload.phase === 'infiltrate') startCountdown(300);
+        break;
+      case 'pouch_result':
+        setAbilities(ev.payload.abilities ?? []);
+        break;
+      case 'hp_update': {
+        // target_id spune AL CUI hp s-a modificat; comparăm cu playerIDRef (stabil în closure)
+        const { target_id, hp } = ev.payload;
+        if (target_id === playerIDRef.current) {
+          setMyHP(hp);
+        } else {
+          setEnemyHP(hp);
+        }
+        break;
+      }
       case 'game_over':
         window.dispatchEvent(new CustomEvent('gameOver', { detail: ev.payload }));
-        clearInterval(countdownRef.current); break;
-      default: break;
+        clearInterval(countdownRef.current);
+        break;
+      default:
+        break;
     }
   };
 
-  const identify = (id) => { setPlayerID(id); connectWS(id); };
+  const identify = (id) => {
+    playerIDRef.current = id;
+    setPlayerID(id);
+    connectWS(id);
+  };
 
   const returnToLobby = () => {
-    setView('lobby'); setArenaID(null); setRole(null);
-    setPhase(null); setAbilities([]); setCountdown(0);
+    setView('lobby');
+    setArenaID(null);
+    setRole(null);
+    setPhase(null);
+    setAbilities([]);
+    setCountdown(0);
+    setMyHP(100);
+    setEnemyHP(100);
   };
 
   const phaseColor = phase === 'infiltrate' ? 'var(--red)' : 'var(--amber)';
@@ -108,6 +143,7 @@ function App() {
         ) : (
             <Arena t={t} arenaID={arenaID} playerID={playerID} role={role}
                    phase={phase} abilities={abilities} skin={skin}
+                   myHP={myHP} enemyHP={enemyHP}
                    onReturnToLobby={returnToLobby} />
         )}
       </>

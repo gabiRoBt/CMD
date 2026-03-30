@@ -198,17 +198,38 @@ func (s *Server) handleAbility(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var err error
+	var updatedPlayer *Player
+
 	if req.Ability == "repair" {
 		err = s.manager.ExecuteRepair(myPlayer)
+		updatedPlayer = myPlayer
 	} else {
 		err = s.manager.ExecuteAbility(enemyPlayer.ContainerID, req.Ability, enemyPlayer)
+		updatedPlayer = enemyPlayer
 	}
+
 	if err != nil {
 		log.Printf("[Ability] %s → %s: %v", req.PlayerID, req.Ability, err)
 		http.Error(w, err.Error(), 400)
 		return
 	}
-	writeJSON(w, map[string]string{"status": "ok"})
+
+	// Broadcast HP update la ambii jucători — fiecare știe că e vorba de updatedPlayer.ID
+	hpPayload := HPUpdatePayload{
+		ArenaID:  req.ArenaID,
+		TargetID: updatedPlayer.ID,
+		HP:       updatedPlayer.HP,
+	}
+	hpEvent := WSEvent{Type: EventHPUpdate, Payload: hpPayload}
+	if a.Host != nil {
+		s.hub.SendToPlayer(a.Host.ID, hpEvent)
+	}
+	if a.Guest != nil {
+		s.hub.SendToPlayer(a.Guest.ID, hpEvent)
+	}
+
+	log.Printf("[Ability] %s → %s pe %s | HP țintă: %d", req.PlayerID, req.Ability, updatedPlayer.ID, updatedPlayer.HP)
+	writeJSON(w, map[string]interface{}{"status": "ok", "target_hp": updatedPlayer.HP})
 }
 
 // ── WebSocket ─────────────────────────────────────────────────────────────────
