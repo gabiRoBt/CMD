@@ -13,21 +13,19 @@ export const i18n = {
         statusWaitPeer:"Așteaptă un adversar, apoi apasă SUNT READY.",
         statusReadyGo: "Apasă SUNT READY când ești pregătit.",
         statusPrep:    "Se pregătesc containerele...",
-        // Lista arene
+        // Lista
         titleList:     "// ARENE DISPONIBILE",
         emptyList:     "Nicio arenă activă.",
         btnRefresh:    "[ ↻ ] REÎMPROSPĂTEAZĂ",
         // Faze
         phaseSetup:    "◼ FAZA SETUP",
         phaseInfil:    "⚔ FAZA INFILTRATE",
-        // Bare HP
-        lblSysYou:     "INTEGRITATE SISTEM (TU)",
-        lblSysEnemy:   "INTEGRITATE SISTEM (INAMIC)",
+        // HP
+        lblSysYou:     "INTEGRITATE (TU)",
+        lblSysEnemy:   "INTEGRITATE (INAMIC)",
         // Terminal
         termTitle:     "CMD :: TERMINAL SECURIZAT",
         // Notificări
-        notifSetup:    "FAZA SETUP: ASCUNDE PAROLA",
-        notifInfil:    "FAZA INFILTRATE: ATACĂ INAMICUL",
         notifOnlyInfil:"DOAR ÎN FAZA INFILTRATE!",
         // Game over
         winTitle:      "☢ VICTORIE",
@@ -41,7 +39,7 @@ export const i18n = {
         canvasEnemy:   "SISTEM INAMIC",
         canvasYours:   "BAZA TA",
         // Ability pills
-        abilityUsed:   "Deja utilizat",
+        abilityUsed:       "Deja utilizat",
         abilityUseLabel:   "[folosește]",
         abilityUsedLabel:  "FOLOSIT",
         pouchEmpty:    "— POUCH GOL —",
@@ -71,21 +69,19 @@ export const i18n = {
         statusWaitPeer:"Wait for an opponent, then press I AM READY.",
         statusReadyGo: "Press I AM READY when you are prepared.",
         statusPrep:    "Preparing containers...",
-        // Arena list
+        // List
         titleList:     "// AVAILABLE ARENAS",
         emptyList:     "No active arenas.",
         btnRefresh:    "[ ↻ ] REFRESH",
         // Phases
         phaseSetup:    "◼ SETUP PHASE",
         phaseInfil:    "⚔ INFILTRATE PHASE",
-        // HP bars
+        // HP
         lblSysYou:     "SYS INTEGRITY (YOU)",
         lblSysEnemy:   "SYS INTEGRITY (ENEMY)",
         // Terminal
         termTitle:     "CMD :: SECURE TERMINAL",
         // Notifications
-        notifSetup:    "SETUP PHASE: HIDE YOUR PASSWORD",
-        notifInfil:    "INFILTRATE PHASE: ATTACK THE ENEMY",
         notifOnlyInfil:"ONLY IN INFILTRATE PHASE!",
         // Game over
         winTitle:      "☢ VICTORY",
@@ -99,7 +95,7 @@ export const i18n = {
         canvasEnemy:   "ENEMY SYSTEM",
         canvasYours:   "YOUR BASE",
         // Ability pills
-        abilityUsed:   "Already used",
+        abilityUsed:       "Already used",
         abilityUseLabel:   "[use]",
         abilityUsedLabel:  "USED",
         pouchEmpty:    "— POUCH EMPTY —",
@@ -114,5 +110,5 @@ export const i18n = {
         hostText:      "HOST:",
         guestText:     "GUEST:",
         waitText:      "waiting...",
-    }
+    },
 };

@@ -11,14 +11,13 @@ import (
 type EventType string
 
 const (
-	EventArenaList    EventType = "arena_list"
-	EventArenaUpdated EventType = "arena_updated"
-	EventGameStart    EventType = "game_start"
-	EventPhaseChange  EventType = "phase_change"
-	EventPouchResult  EventType = "pouch_result" // abilități validate după setup
-	EventHPUpdate     EventType = "hp_update"    // actualizare integritate sistem
-	EventGameOver     EventType = "game_over"
-	EventError        EventType = "error"
+	EventArenaList   EventType = "arena_list"
+	EventGameStart   EventType = "game_start"
+	EventPhaseChange EventType = "phase_change"
+	EventPouchResult EventType = "pouch_result"
+	EventHPUpdate    EventType = "hp_update"
+	EventGameOver    EventType = "game_over"
+	EventError       EventType = "error"
 )
 
 type WSEvent struct {
@@ -41,17 +40,18 @@ type PhaseChangePayload struct {
 	MessageRO  string `json:"message_ro"`
 }
 
-// PouchResultPayload — trimis la finalul setup-ului cu abilitățile validate.
 type PouchResultPayload struct {
 	ArenaID   string   `json:"arena_id"`
-	Abilities []string `json:"abilities"` // ex: ["scramble", "rocket"]
+	Abilities []string `json:"abilities"`
 }
 
-// HPUpdatePayload — trimis după fiecare abilitate / repair cu HP-ul actualizat.
+// HPUpdatePayload — broadcast after every ability/repair.
+// Ability field lets the targeted client render the correct incoming animation direction.
 type HPUpdatePayload struct {
 	ArenaID  string `json:"arena_id"`
-	TargetID string `json:"target_id"` // ID-ul jucătorului al cărui HP s-a modificat
-	HP       int    `json:"hp"`        // valoarea nouă 0-100
+	TargetID string `json:"target_id"` // player whose HP changed
+	HP       int    `json:"hp"`
+	Ability  string `json:"ability"` // which ability was used (empty for draw/timeout)
 }
 
 type GameOverPayload struct {
@@ -110,7 +110,7 @@ func (h *Hub) Run() {
 			h.mu.Lock()
 			h.clients[client] = true
 			h.mu.Unlock()
-			log.Printf("[Hub] Conectat: %s", client.playerID)
+			log.Printf("[Hub] Connected: %s", client.playerID)
 
 		case client := <-h.unregister:
 			h.mu.Lock()
@@ -119,7 +119,7 @@ func (h *Hub) Run() {
 				close(client.send)
 			}
 			h.mu.Unlock()
-			log.Printf("[Hub] Deconectat: %s", client.playerID)
+			log.Printf("[Hub] Disconnected: %s", client.playerID)
 
 		case msg := <-h.broadcast:
 			h.mu.RLock()
@@ -169,7 +169,7 @@ func (c *Client) WritePump() {
 	defer c.conn.Close()
 	for msg := range c.send {
 		if err := c.conn.WriteMessage(websocket.TextMessage, msg); err != nil {
-			log.Printf("[Hub] Write error pentru %s: %v", c.playerID, err)
+			log.Printf("[Hub] Write error for %s: %v", c.playerID, err)
 			return
 		}
 	}

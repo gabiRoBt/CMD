@@ -42,7 +42,7 @@ func (s *Server) Start(port int) error {
 	mux.HandleFunc("/ws", s.handleWS)
 	mux.HandleFunc("/ws/terminal", s.handleWSTerminal)
 	mux.HandleFunc("/", s.handleStatic)
-	log.Printf("[Server] Pornit pe :%d", port)
+	log.Printf("[Server] Started on :%d", port)
 	return http.ListenAndServe(fmt.Sprintf(":%d", port), mux)
 }
 
@@ -61,7 +61,7 @@ func (s *Server) handleCreateArena(w http.ResponseWriter, r *http.Request) {
 		PlayerID string `json:"player_id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.PlayerID == "" {
-		http.Error(w, "player_id este obligatoriu", 400)
+		http.Error(w, "player_id required", 400)
 		return
 	}
 	a, err := s.manager.CreateArena(req.PlayerID)
@@ -83,7 +83,7 @@ func (s *Server) handleJoinArena(w http.ResponseWriter, r *http.Request) {
 		PlayerID string `json:"player_id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "JSON invalid", 400)
+		http.Error(w, "invalid JSON", 400)
 		return
 	}
 	_, err := s.manager.JoinArena(req.ArenaID, req.PlayerID)
@@ -105,7 +105,7 @@ func (s *Server) handleSetReady(w http.ResponseWriter, r *http.Request) {
 		PlayerID string `json:"player_id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "JSON invalid", 400)
+		http.Error(w, "invalid JSON", 400)
 		return
 	}
 	a, err := s.manager.SetReady(req.ArenaID, req.PlayerID)
@@ -137,16 +137,16 @@ func (s *Server) handleLeaveArena(w http.ResponseWriter, r *http.Request) {
 		PlayerID string `json:"player_id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "JSON invalid", 400)
+		http.Error(w, "invalid JSON", 400)
 		return
 	}
 	a, ok := s.manager.arenas[req.ArenaID]
 	if !ok {
-		http.Error(w, "arena nu există", 404)
+		http.Error(w, "arena not found", 404)
 		return
 	}
 	if a.Phase != PhaseWaiting {
-		http.Error(w, "meciul a început deja", 403)
+		http.Error(w, "match already started", 403)
 		return
 	}
 	if a.Host != nil && a.Host.ID == req.PlayerID {
@@ -154,7 +154,7 @@ func (s *Server) handleLeaveArena(w http.ResponseWriter, r *http.Request) {
 	} else if a.Guest != nil && a.Guest.ID == req.PlayerID {
 		a.Guest = nil
 	} else {
-		http.Error(w, "nu ești în această arenă", 403)
+		http.Error(w, "not in this arena", 403)
 		return
 	}
 	s.broadcastArenaList()
@@ -172,16 +172,16 @@ func (s *Server) handleAbility(w http.ResponseWriter, r *http.Request) {
 		Ability  string `json:"ability"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "JSON invalid", 400)
+		http.Error(w, "invalid JSON", 400)
 		return
 	}
 	a, ok := s.manager.arenas[req.ArenaID]
 	if !ok {
-		http.Error(w, "arena nu există", 404)
+		http.Error(w, "arena not found", 404)
 		return
 	}
 	if a.Phase != PhaseInfiltrate {
-		http.Error(w, "doar în faza Infiltrate", 403)
+		http.Error(w, "only in Infiltrate phase", 403)
 		return
 	}
 
@@ -193,7 +193,7 @@ func (s *Server) handleAbility(w http.ResponseWriter, r *http.Request) {
 		myPlayer = a.Guest
 		enemyPlayer = a.Host
 	} else {
-		http.Error(w, "player nu este în arenă", 403)
+		http.Error(w, "player not in arena", 403)
 		return
 	}
 
@@ -214,13 +214,17 @@ func (s *Server) handleAbility(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Broadcast HP update la ambii jucători — fiecare știe că e vorba de updatedPlayer.ID
-	hpPayload := HPUpdatePayload{
-		ArenaID:  req.ArenaID,
-		TargetID: updatedPlayer.ID,
-		HP:       updatedPlayer.HP,
+	// Broadcast HP update with ability name to BOTH players.
+	// The targeted player uses ability+target_id to render incoming animation from the enemy side.
+	hpEvent := WSEvent{
+		Type: EventHPUpdate,
+		Payload: HPUpdatePayload{
+			ArenaID:  req.ArenaID,
+			TargetID: updatedPlayer.ID,
+			HP:       updatedPlayer.HP,
+			Ability:  req.Ability,
+		},
 	}
-	hpEvent := WSEvent{Type: EventHPUpdate, Payload: hpPayload}
 	if a.Host != nil {
 		s.hub.SendToPlayer(a.Host.ID, hpEvent)
 	}
@@ -228,7 +232,7 @@ func (s *Server) handleAbility(w http.ResponseWriter, r *http.Request) {
 		s.hub.SendToPlayer(a.Guest.ID, hpEvent)
 	}
 
-	log.Printf("[Ability] %s → %s pe %s | HP țintă: %d", req.PlayerID, req.Ability, updatedPlayer.ID, updatedPlayer.HP)
+	log.Printf("[Ability] %s → %s on %s | HP target: %d", req.PlayerID, req.Ability, updatedPlayer.ID, updatedPlayer.HP)
 	writeJSON(w, map[string]interface{}{"status": "ok", "target_hp": updatedPlayer.HP})
 }
 
@@ -237,7 +241,7 @@ func (s *Server) handleAbility(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 	playerID := r.URL.Query().Get("player_id")
 	if playerID == "" {
-		http.Error(w, "player_id lipsește", 400)
+		http.Error(w, "player_id missing", 400)
 		return
 	}
 	conn, err := upgrader.Upgrade(w, r, nil)
@@ -258,16 +262,14 @@ func (s *Server) handleWSTerminal(w http.ResponseWriter, r *http.Request) {
 	arenaID := r.URL.Query().Get("arena_id")
 	playerID := r.URL.Query().Get("player_id")
 	if arenaID == "" || playerID == "" {
-		http.Error(w, "Lipsesc parametrii", 400)
+		http.Error(w, "missing params", 400)
 		return
 	}
-
 	a, ok := s.manager.arenas[arenaID]
 	if !ok {
-		http.Error(w, "Arena nu există", 404)
+		http.Error(w, "arena not found", 404)
 		return
 	}
-
 	var targetPort int
 	switch a.Phase {
 	case PhaseSetup:
@@ -283,15 +285,13 @@ func (s *Server) handleWSTerminal(w http.ResponseWriter, r *http.Request) {
 			targetPort = a.Host.SSHPort
 		}
 	default:
-		http.Error(w, "Terminal indisponibil în această fază", 403)
+		http.Error(w, "terminal unavailable in this phase", 403)
 		return
 	}
-
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		return
 	}
-
 	targetAddr := fmt.Sprintf("%s:%d", s.serverIP, targetPort)
 	masterPrivKey := []byte(s.manager.MasterKeys.PrivateKeyPEM)
 	log.Printf("[Terminal] %s → %s", playerID, targetAddr)
@@ -304,7 +304,7 @@ func (s *Server) handleStatic(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, "static/index.html")
 }
 
-// ── Notificări ────────────────────────────────────────────────────────────────
+// ── Notifications ─────────────────────────────────────────────────────────────
 
 func (s *Server) notifyGameStart(a *Arena) {
 	for _, p := range []*Player{a.Host, a.Guest} {
@@ -327,29 +327,25 @@ func (s *Server) notifyGameStart(a *Arena) {
 	}
 }
 
-// watchPhaseTransition — validează pouch, notifică Infiltrate, pornește timer de atac.
 func (s *Server) watchPhaseTransition(a *Arena) {
-	// Așteptăm finalul setup-ului
 	time.Sleep(a.SetupDuration + 500*time.Millisecond)
 	if a.Phase != PhaseInfiltrate {
 		return
 	}
 
-	// Validare pouch
 	hostAbs := s.manager.ValidatePouch(a.Host.ContainerID, a.HostTokens)
 	guestAbs := s.manager.ValidatePouch(a.Guest.ContainerID, a.GuestTokens)
 	a.Host.Abilities = hostAbs
 	a.Guest.Abilities = guestAbs
 	log.Printf("[Arena %s] Pouch host: %v | guest: %v", a.ID, hostAbs, guestAbs)
 
-	// Notificăm tranziția (porturile se inversează)
 	s.hub.SendToPlayer(a.Host.ID, WSEvent{
 		Type: EventPhaseChange,
 		Payload: PhaseChangePayload{
 			ArenaID:    a.ID,
 			Phase:      string(PhaseInfiltrate),
 			SSHCommand: s.sshCmd(a.Guest.SSHPort),
-			MessageRO:  "⚔️ Atacați containerul adversarului.",
+			MessageRO:  "⚔️ Attack the enemy container.",
 		},
 	})
 	s.hub.SendToPlayer(a.Guest.ID, WSEvent{
@@ -358,11 +354,10 @@ func (s *Server) watchPhaseTransition(a *Arena) {
 			ArenaID:    a.ID,
 			Phase:      string(PhaseInfiltrate),
 			SSHCommand: s.sshCmd(a.Host.SSHPort),
-			MessageRO:  "⚔️ Atacați containerul adversarului.",
+			MessageRO:  "⚔️ Attack the enemy container.",
 		},
 	})
 
-	// Abilitățile validate
 	s.hub.SendToPlayer(a.Host.ID, WSEvent{
 		Type:    EventPouchResult,
 		Payload: PouchResultPayload{ArenaID: a.ID, Abilities: hostAbs},
@@ -372,19 +367,15 @@ func (s *Server) watchPhaseTransition(a *Arena) {
 		Payload: PouchResultPayload{ArenaID: a.ID, Abilities: guestAbs},
 	})
 
-	// Pornim timerul de atac — dacă expiră fără câștigător → draw + cleanup automat
 	s.manager.RunAttackTimer(a, func() {
 		log.Printf("[Arena %s] Timeout — DRAW", a.ID)
-		// Notificăm ambii jucători că e remiză
 		for _, p := range []*Player{a.Host, a.Guest} {
 			s.hub.SendToPlayer(p.ID, WSEvent{
 				Type: EventGameOver,
 				Payload: GameOverPayload{
-					ArenaID:    a.ID,
-					WinnerID:   "",
-					WinnerRole: "",
-					YouWon:     false,
-					Draw:       true,
+					ArenaID: a.ID,
+					YouWon:  false,
+					Draw:    true,
 				},
 			})
 		}

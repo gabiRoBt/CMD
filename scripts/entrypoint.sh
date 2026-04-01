@@ -126,66 +126,79 @@ cat > /home/player/.motd << 'EOF'
     ╔══════════════════════════════════════════════╗
     ║         CMD :: ARENA  —  SETUP PHASE         ║
     ║                                              ║
-    ║   Protect  nuclearcodes.txt                  ║
-    ║   Find     weapon_*.bin  →  ~/pouch/         ║
-    ║   Win      /bin/nuke_system <password>       ║
+    ║   Protect   nuclearcodes.txt                 ║
+    ║   Find      weapon_*.bin  →  ~/pouch/        ║
+    ║   Win with  /bin/nuke_system <password>      ║
     ║                                              ║
-    ║   Type  cmdhelp  for the full game guide     ║
+    ║   Run  cmdhelp  for the full game guide      ║
     ╚══════════════════════════════════════════════╝
 
 EOF
 chown player:player /home/player/.motd
 
-# ── cmdhelp — custom game guide command ──────────────────────────────────────
-# Named 'cmdhelp' to avoid collision with bash builtin 'help'
+# ── cmdhelp: custom command — avoids collision with bash builtin 'help' ───────
 cat >> /home/player/.bashrc << 'BASHRC'
 
-# CMD :: Arena game guide — type 'cmdhelp' to display
+# CMD :: Arena game guide
+# Named 'cmdhelp' to avoid shadowing the bash builtin 'help'
 cmdhelp() {
-    cat << 'HELP'
+    cat << 'GUIDE'
 
-  ╔══════════════════════════════════════════════════════════════╗
-  ║                 CMD :: ARENA  —  GAME GUIDE                  ║
-  ╠══════════════════════════════════════════════════════════════╣
-  ║  OBJECTIVE                                                   ║
-  ║    Infiltrate the enemy container and launch the nuke:       ║
-  ║      /bin/nuke_system <password>                             ║
-  ║    The password is stored in  nuclearcodes.txt               ║
-  ╠══════════════════════════════════════════════════════════════╣
-  ║  PHASE 1 — SETUP  (2 min 30 sec)                             ║
-  ║    You are connected to YOUR OWN container.                  ║
-  ║    ▸ HIDE nuclearcodes.txt before infiltration begins:       ║
-  ║        mv nuclearcodes.txt .hidden_name                      ║
-  ║        cat nuclearcodes.txt | base64 > encoded.txt           ║
-  ║    ▸ COLLECT weapon files scattered in the filesystem:       ║
-  ║        find ~/ -name "weapon_*.bin" 2>/dev/null              ║
-  ║        mv ~/Downloads/weapon_scramble_*.bin ~/pouch/         ║
-  ║    ▸ Each weapon validated in ~/pouch = 1 ability unlocked   ║
-  ║      in the web UI footer during Infiltrate phase.           ║
-  ╠══════════════════════════════════════════════════════════════╣
-  ║  PHASE 2 — INFILTRATE  (5 min)                               ║
-  ║    Terminal switches to the ENEMY container automatically.   ║
-  ║    ▸ Search for their nuclearcodes.txt:                      ║
-  ║        find / -name "nuclearcodes*" 2>/dev/null              ║
-  ║        grep -r "nuclear" /home/player/ 2>/dev/null           ║
-  ║    ▸ Launch the nuke to win:                                 ║
-  ║        /bin/nuke_system <found_password>                     ║
-  ╠══════════════════════════════════════════════════════════════╣
-  ║  ABILITIES  (activate from the web UI footer bar)            ║
-  ║   🌀 SCRAMBLE  Scrambles enemy shell aliases       -20 HP     ║
-  ║   🚀 ROCKET    Freezes enemy terminal for 10s      -25 HP     ║
-  ║   📡 SONAR     Deletes enemy empty directories     -15 HP     ║
-  ║   🔧 REPAIR    Counters last received attack (+5s)  +15 HP    ║
-  ╠══════════════════════════════════════════════════════════════╣
-  ║  TIPS                                                        ║
-  ║    ▸ HP reaches 0 only via nuke — abilities are disruption   ║
-  ║    ▸ REPAIR must be triggered within 5s of receiving attack  ║
-  ║    ▸ Scramble reverses your common commands (ls, cat, find…) ║
-  ║    ▸ You can repair scramble and rocket; sonar is permanent  ║
-  ║    ▸ The enemy can also use cmdhelp — strategize early!      ║
-  ╚══════════════════════════════════════════════════════════════╝
+  ╔════════════════════════════════════════════════════════════════╗
+  ║                CMD :: ARENA  —  GAME GUIDE                     ║
+  ╠════════════════════════════════════════════════════════════════╣
+  ║  OBJECTIVE                                                     ║
+  ║    Find the enemy password and launch the nuclear strike:      ║
+  ║      /bin/nuke_system <password>                               ║
+  ║    The password lives in  nuclearcodes.txt  on the enemy box.  ║
+  ╠════════════════════════════════════════════════════════════════╣
+  ║  PHASE 1 — SETUP  (2 min 30 sec)                               ║
+  ║    You are on YOUR OWN container.                              ║
+  ║                                                                ║
+  ║    HIDE your nuclearcodes.txt:                                 ║
+  ║      mv nuclearcodes.txt .hidden_name                          ║
+  ║      cat nuclearcodes.txt | base64 > encoded.txt               ║
+  ║      cat nuclearcodes.txt >> logs/app.log && rm nuclearcodes   ║
+  ║                                                                ║
+  ║    COLLECT weapon files (unlock abilities in the UI footer):   ║
+  ║      find ~/ -name "weapon_*.bin" 2>/dev/null                  ║
+  ║      mv ~/path/to/weapon_scramble_*.bin ~/pouch/               ║
+  ║      Each weapon in ~/pouch = 1 ability unlocked.              ║
+  ╠════════════════════════════════════════════════════════════════╣
+  ║  PHASE 2 — INFILTRATE  (5 min)                                 ║
+  ║    Your terminal now connects to the ENEMY container.          ║
+  ║                                                                ║
+  ║    Search for their password:                                  ║
+  ║      find / -name "nuclearcodes*" 2>/dev/null                  ║
+  ║      grep -r "nuclear" /home/player/ 2>/dev/null               ║
+  ║      ls -la /home/player/ && cat nuclearcodes.txt              ║
+  ║                                                                ║
+  ║    Launch the nuke to win:                                     ║
+  ║      /bin/nuke_system <found_password>                         ║
+  ╠════════════════════════════════════════════════════════════════╣
+  ║  ABILITIES  (activate from the web UI footer bar)              ║
+  ║                                                                ║
+  ║    🌀 SCRAMBLE   Scrambles enemy shell aliases       −20 HP    ║
+  ║       Repair: resets aliases back to normal                    ║
+  ║                                                                ║
+  ║    🚀 ROCKET     Freezes enemy terminal 10 seconds  −25 HP     ║
+  ║       Repair: unfreezes immediately                            ║
+  ║                                                                ║
+  ║    📡 SONAR      Deletes enemy empty directories    −15 HP     ║
+  ║       (cannot be repaired)                                     ║
+  ║                                                                ║
+  ║    🔧 REPAIR     Counters last received attack       +15 HP    ║
+  ║       Must be used within 5 seconds of the attack.             ║
+  ╠════════════════════════════════════════════════════════════════╣
+  ║  TIPS                                                          ║
+  ║    • HP reaches 0 only via nuke — abilities cause disruption   ║
+  ║    • REPAIR: works on scramble and rocket, not sonar           ║
+  ║    • SCRAMBLE reverses: ls, find, cat, head, tail, grep...     ║
+  ║    • SONAR is permanent — protect directories that matter      ║
+  ║    • The enemy sees your weapons too — conceal quickly!        ║
+  ╚════════════════════════════════════════════════════════════════╝
 
-HELP
+GUIDE
 }
 
 [ -f ~/.motd ] && cat ~/.motd
