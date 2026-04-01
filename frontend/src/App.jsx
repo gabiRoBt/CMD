@@ -4,8 +4,8 @@ import Arena from './components/Arena';
 import { i18n } from './i18n';
 
 function App() {
-  const [lang, setLang]           = useState('ro');
-  const [skin, setSkin]           = useState('skin-dev-mode');
+  const [lang, setLang]           = useState('en');          // English default
+  const [skin, setSkin]           = useState('skin-classic'); // Siberia default
   const [playerID, setPlayerID]   = useState(null);
   const [arenaID, setArenaID]     = useState(null);
   const [role, setRole]           = useState(null);
@@ -20,7 +20,6 @@ function App() {
 
   const wsRef        = useRef(null);
   const countdownRef = useRef(null);
-  // păstrăm playerID în ref ca să fie accesibil în closure-ul WS fără stale state
   const playerIDRef  = useRef(null);
   const t = i18n[lang];
 
@@ -66,7 +65,6 @@ function App() {
         setAbilities(ev.payload.abilities ?? []);
         break;
       case 'hp_update': {
-        // target_id spune AL CUI hp s-a modificat; comparăm cu playerIDRef (stabil în closure)
         const { target_id, hp } = ev.payload;
         if (target_id === playerIDRef.current) {
           setMyHP(hp);
@@ -114,21 +112,21 @@ function App() {
           </div>
           <div className="status-bar">
             <select className="header-select" value={skin} onChange={e => setSkin(e.target.value)}>
-              <option value="skin-dev-mode">SKIN: DEV MODE</option>
               <option value="skin-classic">SKIN: SIBERIA</option>
+              <option value="skin-dev-mode">SKIN: DEV MODE</option>
               <option value="skin-cyberpunk">SKIN: RETRO</option>
               <option value="skin-wasteland">SKIN: WASTELAND</option>
             </select>
             <select className="header-select" value={lang} onChange={e => setLang(e.target.value)}>
-              <option value="ro">RO</option>
               <option value="en">EN</option>
+              <option value="ro">RO</option>
             </select>
             <div>
               <div style={{ display:'flex', alignItems:'center', justifyContent:'flex-end' }}>
                 <span className="dot" style={{ background: wsStatus==='ONLINE'?'var(--green)':'var(--red)' }}></span>
                 <span style={{ color: wsStatus==='ONLINE'?'var(--green)':'var(--red)' }}>
-                {wsStatus==='ONLINE'?t.wsOnline:t.wsOffline}
-              </span>
+                  {wsStatus==='ONLINE'?t.wsOnline:t.wsOffline}
+                </span>
               </div>
               {playerID && <div style={{ color:'var(--green-dim)', marginTop:'.2rem' }}>{'>>'} {playerID}</div>}
             </div>
@@ -141,7 +139,7 @@ function App() {
                    onUpdateArena={(id,r) => { setArenaID(id); setRole(r); }}
                    onLeaveArena={() => { setArenaID(null); setRole(null); }} />
         ) : (
-            <Arena t={t} arenaID={arenaID} playerID={playerID} role={role}
+            <Arena t={t} lang={lang} arenaID={arenaID} playerID={playerID} role={role}
                    phase={phase} abilities={abilities} skin={skin}
                    myHP={myHP} enemyHP={enemyHP}
                    onReturnToLobby={returnToLobby} />

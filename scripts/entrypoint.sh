@@ -120,24 +120,78 @@ done
 
 chown -R player:player /home/player
 
-# Centered MOTD
+# ── MOTD ─────────────────────────────────────────────────────────────────────
 cat > /home/player/.motd << 'EOF'
 
-    ╔══════════════════════════════════════════╗
-    ║         CMD :: ARENA  —  SETUP           ║
-    ║                                          ║
-    ║   Protect  nuclearcodes.txt              ║
-    ║   Find     weapon_*.bin → ~/pouch/       ║
-    ║   Win with /bin/nuke_system <password>   ║
-    ╚══════════════════════════════════════════╝
+    ╔══════════════════════════════════════════════╗
+    ║         CMD :: ARENA  —  SETUP PHASE         ║
+    ║                                              ║
+    ║   Protect  nuclearcodes.txt                  ║
+    ║   Find     weapon_*.bin  →  ~/pouch/         ║
+    ║   Win      /bin/nuke_system <password>       ║
+    ║                                              ║
+    ║   Type  cmdhelp  for the full game guide     ║
+    ╚══════════════════════════════════════════════╝
 
 EOF
 chown player:player /home/player/.motd
 
-cat >> /home/player/.bashrc << 'EOF'
+# ── cmdhelp — custom game guide command ──────────────────────────────────────
+# Named 'cmdhelp' to avoid collision with bash builtin 'help'
+cat >> /home/player/.bashrc << 'BASHRC'
+
+# CMD :: Arena game guide — type 'cmdhelp' to display
+cmdhelp() {
+    cat << 'HELP'
+
+  ╔══════════════════════════════════════════════════════════════╗
+  ║                 CMD :: ARENA  —  GAME GUIDE                  ║
+  ╠══════════════════════════════════════════════════════════════╣
+  ║  OBJECTIVE                                                   ║
+  ║    Infiltrate the enemy container and launch the nuke:       ║
+  ║      /bin/nuke_system <password>                             ║
+  ║    The password is stored in  nuclearcodes.txt               ║
+  ╠══════════════════════════════════════════════════════════════╣
+  ║  PHASE 1 — SETUP  (2 min 30 sec)                             ║
+  ║    You are connected to YOUR OWN container.                  ║
+  ║    ▸ HIDE nuclearcodes.txt before infiltration begins:       ║
+  ║        mv nuclearcodes.txt .hidden_name                      ║
+  ║        cat nuclearcodes.txt | base64 > encoded.txt           ║
+  ║    ▸ COLLECT weapon files scattered in the filesystem:       ║
+  ║        find ~/ -name "weapon_*.bin" 2>/dev/null              ║
+  ║        mv ~/Downloads/weapon_scramble_*.bin ~/pouch/         ║
+  ║    ▸ Each weapon validated in ~/pouch = 1 ability unlocked   ║
+  ║      in the web UI footer during Infiltrate phase.           ║
+  ╠══════════════════════════════════════════════════════════════╣
+  ║  PHASE 2 — INFILTRATE  (5 min)                               ║
+  ║    Terminal switches to the ENEMY container automatically.   ║
+  ║    ▸ Search for their nuclearcodes.txt:                      ║
+  ║        find / -name "nuclearcodes*" 2>/dev/null              ║
+  ║        grep -r "nuclear" /home/player/ 2>/dev/null           ║
+  ║    ▸ Launch the nuke to win:                                 ║
+  ║        /bin/nuke_system <found_password>                     ║
+  ╠══════════════════════════════════════════════════════════════╣
+  ║  ABILITIES  (activate from the web UI footer bar)            ║
+  ║   🌀 SCRAMBLE  Scrambles enemy shell aliases       -20 HP     ║
+  ║   🚀 ROCKET    Freezes enemy terminal for 10s      -25 HP     ║
+  ║   📡 SONAR     Deletes enemy empty directories     -15 HP     ║
+  ║   🔧 REPAIR    Counters last received attack (+5s)  +15 HP    ║
+  ╠══════════════════════════════════════════════════════════════╣
+  ║  TIPS                                                        ║
+  ║    ▸ HP reaches 0 only via nuke — abilities are disruption   ║
+  ║    ▸ REPAIR must be triggered within 5s of receiving attack  ║
+  ║    ▸ Scramble reverses your common commands (ls, cat, find…) ║
+  ║    ▸ You can repair scramble and rocket; sonar is permanent  ║
+  ║    ▸ The enemy can also use cmdhelp — strategize early!      ║
+  ╚══════════════════════════════════════════════════════════════╝
+
+HELP
+}
+
 [ -f ~/.motd ] && cat ~/.motd
 [ -f ~/.bash_aliases ] && source ~/.bash_aliases
-EOF
+BASHRC
+
 chown player:player /home/player/.bashrc
 
 echo "=== CMD Arena container started ==="

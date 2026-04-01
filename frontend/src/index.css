@@ -36,7 +36,7 @@ body::before {
   background:repeating-linear-gradient(
           0deg, transparent, transparent 2px, rgba(0,0,0,0.22) 2px, rgba(0,0,0,0.22) 4px
   );
-  border-radius:4px 4px 4px 0;
+  border-radius:4px 4px 4px 4px;
 }
 
 /* ── HEADER ── */
@@ -119,13 +119,12 @@ header {
 
 #arena {
   flex:1; position:relative; background:#000;
-  overflow:hidden; user-select:none;
-  isolation:isolate;
+  overflow:hidden; user-select:none; isolation:isolate;
 }
 
 .top-band {
   position:absolute; top:0; left:0; right:0; height:40%;
-  background:var(--sky-bg); background-size:auto 100%; z-index:1;
+  background:var(--sky-bg); z-index:1;
 }
 .band-separator {
   position:absolute; top:40%; left:0; right:0; height:4px;
@@ -136,7 +135,7 @@ header {
   background:var(--ground-bg); z-index:1;
 }
 
-/* ── BAZE — containere SVG ── */
+/* ── BASES ── */
 .base-container {
   position:absolute; bottom:12%; width:22%; z-index:10;
   aspect-ratio:1.2/1;
@@ -145,13 +144,13 @@ header {
 .right-base-pos { right:5%; transform:scaleX(-1); }
 .base-container svg { width:100%; height:100%; display:block; }
 
-/* ── DECORATIUNI SOL ── */
+/* ── GROUND DECO ── */
 .ground-deco {
   position:absolute; bottom:0; left:0; right:0; height:42%;
   z-index:3; pointer-events:none;
 }
 
-/* ── CANVAS PROIECTILE ── */
+/* ── STRIKE CANVAS ── */
 #strike-canvas { position:absolute; inset:0; pointer-events:none; z-index:10; }
 
 /* ── PHASE BAR ── */
@@ -176,7 +175,6 @@ header {
 .hp-label  { font-size:9px; color:#fff; text-shadow:1px 1px 2px #000; font-family:monospace; letter-spacing:.08em; }
 .hp-track  { width:120px; height:5px; background:#1A2318; border:1px solid #000; }
 .hp-fill   { height:100%; transition:width .5s ease, background .5s ease; }
-/* Procentul afișat sub bara HP */
 .hp-pct    { font-size:8px; font-family:monospace; margin-top:1px; }
 
 /* ── TERMINAL ── */
@@ -187,16 +185,39 @@ header {
   cursor:default; z-index:200;
   box-shadow:4px 4px 0 #0a110a;
   display:flex; flex-direction:column; resize:both; overflow:hidden;
-  border-radius:4px 4px 4px 0;
+  border-radius:4px;
 }
-.term-bubble-tail {
-  position:absolute; bottom:-12px; left:0; width:0; height:0; border-style:solid;
-  border-width:12px 14px 0 0; border-color:#4A6741 transparent transparent transparent; z-index:201;
+
+/* LEFT tail — setup phase, own base on left */
+.term-bubble-tail-left {
+  position:absolute; left:-11px; top:50%; transform:translateY(-50%);
+  width:0; height:0; border-style:solid;
+  border-width:8px 11px 8px 0;
+  border-color:transparent #4A6741 transparent transparent;
+  z-index:201;
 }
-.term-bubble-tail::after {
-  content:''; position:absolute; bottom:1px; left:1px; width:0; height:0; border-style:solid;
-  border-width:11px 13px 0 0; border-color:#1A2318 transparent transparent transparent;
+.term-bubble-tail-left::after {
+  content:''; position:absolute; left:2px; top:-7px;
+  width:0; height:0; border-style:solid;
+  border-width:7px 10px 7px 0;
+  border-color:transparent #1A2318 transparent transparent;
 }
+
+/* RIGHT tail — infiltrate phase, enemy base on right */
+.term-bubble-tail-right {
+  position:absolute; right:-11px; top:50%; transform:translateY(-50%);
+  width:0; height:0; border-style:solid;
+  border-width:8px 0 8px 11px;
+  border-color:transparent transparent transparent #4A6741;
+  z-index:201;
+}
+.term-bubble-tail-right::after {
+  content:''; position:absolute; right:2px; top:-7px;
+  width:0; height:0; border-style:solid;
+  border-width:7px 0 7px 10px;
+  border-color:transparent transparent transparent #1A2318;
+}
+
 .term-titlebar {
   background:#2D4229; padding:5px 8px;
   display:flex; align-items:center; justify-content:space-between;
@@ -255,38 +276,71 @@ header {
   border-radius:999px; cursor:pointer; overflow:hidden;
   transition:background .15s; backdrop-filter:blur(4px);
 }
-.ability-pill:hover:not(.used) { background:rgba(10,20,10,0.95); box-shadow:0 0 10px color-mix(in srgb,var(--ab-color,#4A6741) 40%,transparent); }
+.ability-pill:hover:not(.used) {
+  background:rgba(10,20,10,0.95);
+  box-shadow:0 0 10px color-mix(in srgb,var(--ab-color,#4A6741) 40%,transparent);
+}
 .ability-pill.used { opacity:.35; cursor:not-allowed; filter:grayscale(1); border-style:dashed; border-color:#2a2a2a !important; pointer-events:none; }
 .ab-icon { font-size:13px; line-height:1; flex-shrink:0; }
 .ab-name { font-size:9px; color:var(--ab-color,#7A9E72); font-family:'Share Tech Mono',monospace; text-transform:uppercase; letter-spacing:.12em; flex:1; }
-.ab-cd-progress { position:absolute; left:0; top:0; bottom:0; background:color-mix(in srgb,var(--ab-color,#4A6741) 20%,transparent); transition:width 1s linear; pointer-events:none; border-radius:999px; }
+.ab-cd-progress { position:absolute; left:0; top:0; bottom:0; background:color-mix(in srgb,var(--ab-color,#4A6741) 20%,transparent); pointer-events:none; border-radius:999px; }
 .ab-key { font-size:9px; color:var(--text-dim); font-family:'Share Tech Mono',monospace; flex-shrink:0; }
 .ab-used-tag { font-size:8px; color:#333; font-family:'Share Tech Mono',monospace; flex-shrink:0; }
 
-/* ═══════════════════════════════════════
+/* ═══════════════════════════════════════════════════════
    SKINURI
-═══════════════════════════════════════ */
+═══════════════════════════════════════════════════════ */
 
-/* ── DEV MODE ── */
+/* ── DEV MODE — photo desert battlefield ── */
 body.skin-dev-mode {
-  --sky-bg:    linear-gradient(to bottom, #020d02 0%, #041808 60%, #061c08 100%);
-  --ground-bg: #030e03;
-  --sep-color: #0a3a0a;
+  --green: #00ff41; --green-dim: #00aa2a; --green-dark: #003310;
+  --amber: #ffb300; --red: #ff3131;
+  --bg: #0a0804; --panel: #100e08; --border: #2a2010;
+  --text: #cc9944; --text-dim: #664422;
 }
-body.skin-dev-mode .ground-deco {
-  background:
-          radial-gradient(ellipse 40px 10px at 25% 80%, rgba(0,80,0,0.3) 0%, transparent 70%),
-          radial-gradient(ellipse 30px 8px at 60% 85%, rgba(0,60,0,0.25) 0%, transparent 70%),
-          radial-gradient(ellipse 50px 12px at 78% 75%, rgba(0,70,0,0.2) 0%, transparent 70%);
+body.skin-dev-mode .top-band {
+  /* Photo sky — falls back to gradient if image missing */
+  background: url('assets/ceata.jpeg') center top / cover no-repeat,
+  linear-gradient(to bottom, #5a4020 0%, #8a6030 40%, #b08050 100%);
 }
+body.skin-dev-mode .bottom-band {
+  background: url('assets/nisip.jpeg') center / cover no-repeat,
+  linear-gradient(to bottom, #c8a060 0%, #b08848 50%, #907040 100%);
+}
+body.skin-dev-mode .band-separator {
+  background: rgba(20,14,8,0.7);
+  height: 3px;
+}
+body.skin-dev-mode .ground-deco { display:none; }
+body.skin-dev-mode #phase-bar {
+  background: rgba(30,22,12,0.88);
+  border-bottom-color: #4a3018;
+}
+body.skin-dev-mode .term-titlebar    { background:#3a2810; }
+body.skin-dev-mode #terminal-win      { border-color:#6a4820; background:#1a1208; }
+body.skin-dev-mode .term-btn          { background:#5a3818; }
+body.skin-dev-mode .term-bubble-tail-left  { border-right-color:#6a4820; }
+body.skin-dev-mode .term-bubble-tail-left::after  { border-right-color:#1a1208; }
+body.skin-dev-mode .term-bubble-tail-right { border-left-color:#6a4820; }
+body.skin-dev-mode .term-bubble-tail-right::after  { border-left-color:#1a1208; }
+body.skin-dev-mode .hp-track          { background:#2a1808; }
+body.skin-dev-mode #arena-footer      { background:#100e08; border-top-color:#2a2010; }
 
-/* ── SIBERIA ── */
+/* ── SIBERIA / CLASSIC ── */
 body.skin-classic {
   --green:#00ddff; --green-dim:#0088bb; --green-dark:#003344;
-  --amber:#66ccff; --bg:#030a10; --panel:#050f18; --border:#0a2a3a; --text:#00aacc; --text-dim:#004466;
+  --amber:#66ccff; --red:#ff6688;
+  --bg:#030a10; --panel:#050f18; --border:#0a2a3a; --text:#00aacc; --text-dim:#004466;
   --sky-bg:    linear-gradient(to bottom, #060d1a 0%, #0f2040 25%, #1a3a6a 50%, #4a7aaa 68%, #8ab4d4 78%, #c8dde8 86%, #eef6ff 94%, #f8faff 100%);
   --ground-bg: linear-gradient(to bottom, #d8eeff 0%, #b8d8f0 30%, #90bce0 70%, #6898c8 100%);
   --sep-color: #4a80b0;
+}
+body.skin-classic .top-band::after {
+  content:''; position:absolute; inset:0; pointer-events:none;
+  background:
+          radial-gradient(ellipse 55% 25% at 25% 65%, rgba(0,220,140,0.12) 0%, transparent 70%),
+          radial-gradient(ellipse 40% 18% at 72% 55%, rgba(0,140,255,0.09) 0%, transparent 70%),
+          radial-gradient(ellipse 30% 12% at 50% 30%, rgba(180,240,255,0.06) 0%, transparent 70%);
 }
 body.skin-classic .ground-deco {
   background:
@@ -294,42 +348,164 @@ body.skin-classic .ground-deco {
           radial-gradient(ellipse 40px 12px at 42% 75%, rgba(240,248,255,0.6) 0%, transparent 70%),
           radial-gradient(ellipse 80px 20px at 65% 55%, rgba(200,228,248,0.5) 0%, transparent 70%),
           radial-gradient(ellipse 35px 10px at 82% 70%, rgba(230,244,255,0.65) 0%, transparent 70%),
-          radial-gradient(ellipse 50px 14px at 10% 80%, rgba(210,235,255,0.5) 0%, transparent 70%),
-          radial-gradient(ellipse 25px 8px at 55% 85%, rgba(240,250,255,0.55) 0%, transparent 70%);
+          radial-gradient(ellipse 50px 14px at 10% 80%, rgba(210,235,255,0.5) 0%, transparent 70%);
+}
+body.skin-classic .term-titlebar  { background:#1a3a5a; }
+body.skin-classic #terminal-win    { border-color:#2a5a8a; background:#0f2035; }
+body.skin-classic .term-btn        { background:#2a5a8a; }
+body.skin-classic .term-bubble-tail-left  { border-right-color:#2a5a8a; }
+body.skin-classic .term-bubble-tail-left::after  { border-right-color:#0f2035; }
+body.skin-classic .term-bubble-tail-right { border-left-color:#2a5a8a; }
+body.skin-classic .term-bubble-tail-right::after  { border-left-color:#0f2035; }
+body.skin-classic .hp-track        { background:#0d2030; }
+body.skin-classic #phase-bar       { background:rgba(10,25,40,0.9); border-bottom-color:#1a3a5a; }
+
+/* ── Snow falling — Siberia decoration ── */
+@keyframes siberia-snow-fall {
+  0%   { transform:translateY(-20px) translateX(0px);   opacity:0; }
+  10%  { opacity:0.7; }
+  90%  { opacity:0.5; }
+  100% { transform:translateY(110vh) translateX(25px);  opacity:0; }
+}
+/* Snow particles are added via pseudo-elements on #arena in siberia */
+body.skin-classic #arena::before {
+  content:'';
+  position:absolute; inset:0; pointer-events:none; z-index:4; overflow:hidden;
+  background-image:
+          radial-gradient(circle 2px at 8%  10%, rgba(220,240,255,0.8) 50%, transparent 50%),
+          radial-gradient(circle 1.5px at 23% 35%, rgba(220,240,255,0.7) 50%, transparent 50%),
+          radial-gradient(circle 2px at 40%  15%, rgba(220,240,255,0.75) 50%, transparent 50%),
+          radial-gradient(circle 1px at 60%  28%, rgba(220,240,255,0.6) 50%, transparent 50%),
+          radial-gradient(circle 2px at 78%  8%,  rgba(220,240,255,0.8) 50%, transparent 50%),
+          radial-gradient(circle 1.5px at 90% 42%, rgba(220,240,255,0.65) 50%, transparent 50%),
+          radial-gradient(circle 1px at 15%  55%, rgba(220,240,255,0.6) 50%, transparent 50%),
+          radial-gradient(circle 2px at 52%  50%, rgba(220,240,255,0.7) 50%, transparent 50%);
+  background-size:100% 100%;
+  animation:siberia-snow-fall 6s linear infinite;
+}
+body.skin-classic #arena::after {
+  content:'';
+  position:absolute; inset:0; pointer-events:none; z-index:4; overflow:hidden;
+  background-image:
+          radial-gradient(circle 1.5px at 30% 20%, rgba(220,240,255,0.7) 50%, transparent 50%),
+          radial-gradient(circle 2px at 65%  5%,  rgba(220,240,255,0.8) 50%, transparent 50%),
+          radial-gradient(circle 1px at 82%  32%, rgba(220,240,255,0.6) 50%, transparent 50%),
+          radial-gradient(circle 2px at 12%  70%, rgba(220,240,255,0.75) 50%, transparent 50%),
+          radial-gradient(circle 1.5px at 47% 60%, rgba(220,240,255,0.65) 50%, transparent 50%);
+  background-size:100% 100%;
+  animation:siberia-snow-fall 8s linear infinite -3s;
 }
 
-/* ── RETRO (Cyberpunk) ── */
+/* ── RETRO / CYBERPUNK ── */
 body.skin-cyberpunk {
   --green:#ff00ff; --green-dim:#aa00aa; --green-dark:#330033;
-  --amber:#ffff00; --bg:#050005; --panel:#0a000a; --border:#330033; --text:#cc00cc; --text-dim:#660066;
+  --amber:#ffff00; --red:#ff6666;
+  --bg:#050005; --panel:#0a000a; --border:#330033; --text:#cc00cc; --text-dim:#660066;
   --sky-bg:    linear-gradient(to bottom, #050010 0%, #0f0820 30%, #1a0833 55%, #2d1550 75%, #1a0f40 100%);
   --ground-bg: linear-gradient(to bottom, #1a0033 0%, #0d001f 50%, #060010 100%);
-  --sep-color: #ff00ff;
+  --sep-color: rgba(255,0,255,0.6);
 }
 body.skin-cyberpunk .ground-deco {
   background:
-          linear-gradient(90deg, transparent 9%, rgba(255,0,255,0.12) 10%, transparent 11%),
-          linear-gradient(90deg, transparent 24%, rgba(255,255,0,0.08) 25%, transparent 26%),
-          linear-gradient(90deg, transparent 49%, rgba(255,0,255,0.1) 50%, transparent 51%),
-          linear-gradient(90deg, transparent 74%, rgba(255,255,0,0.12) 75%, transparent 76%),
-          linear-gradient(90deg, transparent 89%, rgba(255,0,255,0.1) 90%, transparent 91%);
+          linear-gradient(90deg, transparent 9%,  rgba(255,0,255,0.12)  10%, transparent 11%),
+          linear-gradient(90deg, transparent 24%, rgba(255,255,0,0.08)  25%, transparent 26%),
+          linear-gradient(90deg, transparent 49%, rgba(255,0,255,0.1)   50%, transparent 51%),
+          linear-gradient(90deg, transparent 74%, rgba(255,255,0,0.12)  75%, transparent 76%),
+          linear-gradient(90deg, transparent 89%, rgba(255,0,255,0.1)   90%, transparent 91%);
+}
+body.skin-cyberpunk .term-titlebar { background:#200040; }
+body.skin-cyberpunk #terminal-win  { border-color:#660088; background:#0a0018; }
+body.skin-cyberpunk .term-btn      { background:#440066; }
+body.skin-cyberpunk .term-bubble-tail-left  { border-right-color:#660088; }
+body.skin-cyberpunk .term-bubble-tail-left::after  { border-right-color:#0a0018; }
+body.skin-cyberpunk .term-bubble-tail-right { border-left-color:#660088; }
+body.skin-cyberpunk .term-bubble-tail-right::after  { border-left-color:#0a0018; }
+body.skin-cyberpunk .hp-track      { background:#1a002a; }
+body.skin-cyberpunk #phase-bar     { background:rgba(8,0,16,0.9); border-bottom-color:#330033; }
+
+/* Scan sweep */
+@keyframes cyber-scan-sweep {
+  from { top:-3px; }
+  to   { top:100%; }
+}
+.cyber-scanline {
+  position:absolute; left:0; right:0; height:3px;
+  background:linear-gradient(90deg, transparent 0%, rgba(255,0,255,0.6) 20%, rgba(255,255,255,0.3) 50%, rgba(255,0,255,0.6) 80%, transparent 100%);
+  box-shadow:0 0 12px rgba(255,0,255,0.5);
+  animation:cyber-scan-sweep 4s linear infinite;
+  pointer-events:none;
+}
+/* Matrix data columns */
+@keyframes matrix-fall {
+  from { background-position:0 -100px; }
+  to   { background-position:0 200px; }
+}
+.matrix-col {
+  position:absolute; inset:0;
+  background:repeating-linear-gradient(
+          to bottom,
+          transparent,
+          transparent 8px,
+          rgba(255,0,255,0.3) 8px,
+          rgba(255,0,255,0.3) 10px,
+          transparent 10px,
+          transparent 14px,
+          rgba(255,0,255,0.15) 14px,
+          rgba(255,0,255,0.15) 16px,
+          transparent 16px,
+          transparent 22px,
+          rgba(255,0,255,0.5) 22px,
+          rgba(255,0,255,0.5) 24px
+  );
+  animation:matrix-fall 1.5s linear var(--delay,0s) infinite;
+}
+.matrix-col-alt {
+  background:repeating-linear-gradient(
+          to bottom,
+          transparent,
+          transparent 6px,
+          rgba(255,255,0,0.3) 6px,
+          rgba(255,255,0,0.3) 8px,
+          transparent 8px,
+          transparent 16px,
+          rgba(255,255,0,0.5) 16px,
+          rgba(255,255,0,0.5) 18px
+  );
 }
 
 /* ── WASTELAND ── */
 body.skin-wasteland {
   --green:#d4a843; --green-dim:#8a6a20; --green-dark:#3a2a08;
-  --amber:#ff6600; --bg:#0d0805; --panel:#150e06; --border:#3a2a0a; --text:#c89a30; --text-dim:#5a4010;
+  --amber:#ff6600; --red:#ff4422;
+  --bg:#0d0805; --panel:#150e06; --border:#3a2a0a; --text:#c89a30; --text-dim:#5a4010;
   --sky-bg:    linear-gradient(to bottom, #120a04 0%, #2a1208 20%, #4a2010 40%, #6b3318 60%, #8B5A2B 80%, #a07040 100%);
   --ground-bg: linear-gradient(to bottom, #4a3020 0%, #3a2415 40%, #2a1a0a 100%);
   --sep-color: #6b3318;
 }
 body.skin-wasteland .ground-deco {
   background:
-          radial-gradient(ellipse 35px 12px at 18% 65%, rgba(90,55,20,0.7) 0%, transparent 70%),
-          radial-gradient(ellipse 50px 16px at 38% 78%, rgba(70,40,15,0.6) 0%, transparent 70%),
+          radial-gradient(ellipse 35px 12px at 18% 65%, rgba(90,55,20,0.7)  0%, transparent 70%),
+          radial-gradient(ellipse 50px 16px at 38% 78%, rgba(70,40,15,0.6)  0%, transparent 70%),
           radial-gradient(ellipse 28px 10px at 55% 62%, rgba(100,60,20,0.55) 0%, transparent 70%),
           radial-gradient(ellipse 60px 18px at 75% 72%, rgba(80,48,18,0.65) 0%, transparent 70%),
-          radial-gradient(circle 10px at 28% 80%, rgba(50,30,10,0.8) 0%, transparent 70%),
-          radial-gradient(circle 7px at 62% 82%, rgba(45,28,10,0.75) 0%, transparent 70%),
-          radial-gradient(circle 12px at 85% 76%, rgba(55,32,12,0.7) 0%, transparent 70%);
+          radial-gradient(circle 10px at 28% 80%, rgba(50,30,10,0.8)  0%, transparent 70%),
+          radial-gradient(circle 12px at 85% 76%, rgba(55,32,12,0.7)  0%, transparent 70%);
 }
+body.skin-wasteland .term-titlebar { background:#2a1508; }
+body.skin-wasteland #terminal-win  { border-color:#5a3010; background:#150a04; }
+body.skin-wasteland .term-btn      { background:#4a2808; }
+body.skin-wasteland .term-bubble-tail-left  { border-right-color:#5a3010; }
+body.skin-wasteland .term-bubble-tail-left::after  { border-right-color:#150a04; }
+body.skin-wasteland .term-bubble-tail-right { border-left-color:#5a3010; }
+body.skin-wasteland .term-bubble-tail-right::after  { border-left-color:#150a04; }
+body.skin-wasteland .hp-track      { background:#2a1408; }
+body.skin-wasteland #phase-bar     { background:rgba(15,8,2,0.9); border-bottom-color:#3a2010; }
+
+/* Fire flicker animation for wasteland barrel */
+@keyframes wl-fire-flicker {
+  0%,100% { transform:scaleY(1)   scaleX(1)   translateY(0);   opacity:.9; }
+  25%      { transform:scaleY(1.15) scaleX(.88) translateY(-2px); opacity:.75; }
+  50%      { transform:scaleY(.92) scaleX(1.1)  translateY(0);   opacity:.85; }
+  75%      { transform:scaleY(1.2) scaleX(.85)  translateY(-3px); opacity:.7; }
+}
+.wl-fire { animation:wl-fire-flicker .4s ease-in-out infinite; transform-origin:bottom center; }
