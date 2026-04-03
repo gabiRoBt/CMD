@@ -1,0 +1,26 @@
+{
+  "name": "cmd",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prestart-all": "docker build -f Dockerfile.arena -t cmd-arena:latest .",
+    "start-all": "concurrently -c \"cyan.bold,magenta.bold,yellow.bold\" -n \"GO,VITE,NGROK\" \"go run main.go\" \"cd frontend && npm run dev\" \"ngrok http 5173 --log=stdout\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gabiRoBt/CMD.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/gabiRoBt/CMD/issues"
+  },
+  "homepage": "https://github.com/gabiRoBt/CMD#readme",
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}
