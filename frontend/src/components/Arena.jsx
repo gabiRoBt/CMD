@@ -19,8 +19,6 @@ const ABILITY_EFFECTS = {
     sonar:    { ro: 'DIRECTOARE GOALE ȘTERSE  −15 HP',    en: 'EMPTY FOLDERS DELETED  −15 HP'   },
 };
 
-const hpColor = (hp) => hp > 60 ? '#4A8C42' : hp > 30 ? '#C0A050' : '#C04A42';
-
 // Antenna position as fraction of the base-container div dimensions.
 // Used to compute the screen-space endpoint for the connection line.
 // All antennas are at horizontal center (x=0.5).
@@ -177,27 +175,32 @@ function BaseSiberia() {
 }
 
 function SiberiaDecorations() {
+    // 4 trees at varied, non-symmetric positions
+    const trees = [
+        { side: 'left',  pos: '24%', size: '9%',  zIdx: 6 },
+        { side: 'left',  pos: '33%', size: '6.5%',zIdx: 5 },
+        { side: 'right', pos: '26%', size: '7.5%',zIdx: 6 },
+        { side: 'right', pos: '36%', size: '5.5%',zIdx: 5 },
+    ];
     return (
         <>
-            <svg style={{ position: 'absolute', bottom: '36%', left: '27%', width: '8%', zIndex: 6, pointerEvents: 'none' }}
-                 viewBox="0 0 80 120" xmlns="http://www.w3.org/2000/svg">
-                <polygon points="40,5 10,60 70,60" fill="#0d2e1a" opacity="0.9"/>
-                <polygon points="40,25 8,72 72,72" fill="#0e3420" opacity="0.9"/>
-                <polygon points="40,45 6,88 74,88" fill="#0f3a24" opacity="0.9"/>
-                <rect x="34" y="88" width="12" height="28" fill="#0a1e10"/>
-                <polygon points="40,5 16,52 64,52" fill="#e0f0ff" opacity="0.55"/>
-                <polygon points="40,25 14,65 66,65" fill="#e0f0ff" opacity="0.4"/>
-                <polygon points="40,45 12,80 68,80" fill="#e0f0ff" opacity="0.3"/>
-            </svg>
-            <svg style={{ position: 'absolute', bottom: '36%', right: '27%', width: '7%', zIndex: 6, pointerEvents: 'none' }}
-                 viewBox="0 0 80 120" xmlns="http://www.w3.org/2000/svg">
-                <polygon points="40,5 10,60 70,60" fill="#0d2e1a" opacity="0.9"/>
-                <polygon points="40,25 8,72 72,72" fill="#0e3420" opacity="0.9"/>
-                <polygon points="40,45 6,88 74,88" fill="#0f3a24" opacity="0.9"/>
-                <rect x="34" y="88" width="12" height="28" fill="#0a1e10"/>
-                <polygon points="40,5 16,52 64,52" fill="#e0f0ff" opacity="0.55"/>
-                <polygon points="40,25 14,65 66,65" fill="#e0f0ff" opacity="0.4"/>
-            </svg>
+            {trees.map((t, i) => (
+                <svg key={i}
+                     style={{
+                         position: 'absolute', bottom: '36%',
+                         [t.side]: t.pos,
+                         width: t.size, zIndex: t.zIdx, pointerEvents: 'none',
+                     }}
+                     viewBox="0 0 80 120" xmlns="http://www.w3.org/2000/svg">
+                    <polygon points="40,5 10,60 70,60" fill="#0d2e1a" opacity="0.9"/>
+                    <polygon points="40,25 8,72 72,72" fill="#0e3420" opacity="0.9"/>
+                    <polygon points="40,45 6,88 74,88" fill="#0f3a24" opacity="0.9"/>
+                    <rect x="34" y="88" width="12" height="28" fill="#0a1e10"/>
+                    <polygon points="40,5 16,52 64,52" fill="#e0f0ff" opacity="0.55"/>
+                    <polygon points="40,25 14,65 66,65" fill="#e0f0ff" opacity="0.4"/>
+                    <polygon points="40,45 12,80 68,80" fill="#e0f0ff" opacity="0.28"/>
+                </svg>
+            ))}
             <div style={{
                 position: 'absolute', bottom: '38%', left: '30%', right: '30%',
                 height: '6%', zIndex: 5, pointerEvents: 'none',
@@ -427,25 +430,33 @@ function BaseWasteland() {
 }
 
 function WastelandDecorations() {
+    // 4 dead trees at varied positions
+    const deadTrees = [
+        { side: 'left',  pct: '25%', w: '5.5%', scaleX: 1   },
+        { side: 'left',  pct: '34%', w: '3.8%', scaleX: -1  },
+        { side: 'right', pct: '26%', w: '4.5%', scaleX: 1   },
+        { side: 'right', pct: '37%', w: '3.2%', scaleX: -1  },
+    ];
     return (
         <>
-            <svg style={{ position: 'absolute', bottom: '37%', left: '28%', width: '5%', zIndex: 6, pointerEvents: 'none' }}
-                 viewBox="0 0 50 100" xmlns="http://www.w3.org/2000/svg">
-                <line x1="25" y1="100" x2="25" y2="20" stroke="#3a1a08" strokeWidth="4"/>
-                <line x1="25" y1="35" x2="8" y2="18" stroke="#3a1a08" strokeWidth="2.5"/>
-                <line x1="25" y1="45" x2="42" y2="28" stroke="#3a1a08" strokeWidth="2.5"/>
-                <line x1="25" y1="55" x2="5" y2="48" stroke="#3a1a08" strokeWidth="2"/>
-                <line x1="25" y1="60" x2="45" y2="50" stroke="#3a1a08" strokeWidth="2"/>
-                <line x1="8" y1="18" x2="3" y2="10" stroke="#3a1a08" strokeWidth="1.5"/>
-                <line x1="8" y1="18" x2="14" y2="8" stroke="#3a1a08" strokeWidth="1.5"/>
-            </svg>
-            <svg style={{ position: 'absolute', bottom: '37%', right: '28%', width: '4%', zIndex: 6, pointerEvents: 'none' }}
-                 viewBox="0 0 50 100" xmlns="http://www.w3.org/2000/svg">
-                <line x1="25" y1="100" x2="25" y2="25" stroke="#3a1a08" strokeWidth="3.5"/>
-                <line x1="25" y1="40" x2="10" y2="22" stroke="#3a1a08" strokeWidth="2"/>
-                <line x1="25" y1="50" x2="40" y2="35" stroke="#3a1a08" strokeWidth="2"/>
-                <line x1="25" y1="60" x2="8" y2="55" stroke="#3a1a08" strokeWidth="1.5"/>
-            </svg>
+            {deadTrees.map((tr, i) => (
+                <svg key={i}
+                     style={{
+                         position: 'absolute', bottom: '37%',
+                         [tr.side]: tr.pct,
+                         width: tr.w, zIndex: 6, pointerEvents: 'none',
+                         transform: `scaleX(${tr.scaleX})`,
+                     }}
+                     viewBox="0 0 50 100" xmlns="http://www.w3.org/2000/svg">
+                    <line x1="25" y1="100" x2="25" y2="20" stroke="#3a1a08" strokeWidth="4"/>
+                    <line x1="25" y1="35" x2="8" y2="18" stroke="#3a1a08" strokeWidth="2.5"/>
+                    <line x1="25" y1="45" x2="42" y2="28" stroke="#3a1a08" strokeWidth="2.5"/>
+                    <line x1="25" y1="55" x2="5" y2="48" stroke="#3a1a08" strokeWidth="2"/>
+                    <line x1="25" y1="62" x2="45" y2="52" stroke="#3a1a08" strokeWidth="2"/>
+                    <line x1="8"  y1="18" x2="3"  y2="10" stroke="#3a1a08" strokeWidth="1.5"/>
+                    <line x1="8"  y1="18" x2="14" y2="8"  stroke="#3a1a08" strokeWidth="1.5"/>
+                </svg>
+            ))}
             {/* Fire barrel */}
             <svg style={{ position: 'absolute', bottom: '38%', left: '47%', width: '4%', zIndex: 7, pointerEvents: 'none' }}
                  viewBox="0 0 40 60" xmlns="http://www.w3.org/2000/svg">
@@ -822,16 +833,31 @@ export default function Arena({
     const useAbility = async (name) => {
         if (phase !== 'infiltrate') { showNotif(t.notifOnlyInfil); return; }
         if (usedAbilities.has(name)) return;
-        setUsedAbilities(prev => new Set([...prev, name]));
+
+        // For repair: don't pre-mark as used — wait for server confirmation
+        if (name !== 'repair') {
+            setUsedAbilities(prev => new Set([...prev, name]));
+        }
+
         // Trigger OUTGOING animation locally
         fireAnimation(name, 'outgoing');
         const effect = ABILITY_EFFECTS[name]?.[lang] || ABILITY_EFFECTS[name]?.en || name.toUpperCase();
         showNotif(effect);
         try {
-            await fetch('/api/ability', {
+            const res = await fetch('/api/ability', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ arena_id: arenaID, player_id: playerID, ability: name }),
             });
+            if (name === 'repair') {
+                if (res.ok) {
+                    // Consumed successfully — mark as used
+                    setUsedAbilities(prev => new Set([...prev, name]));
+                } else {
+                    // Window expired or no attack to repair — keep it available
+                    const txt = await res.text();
+                    showNotif(`REPAIR: ${txt.trim() || 'window expired'}`);
+                }
+            }
         } catch (e) { console.error(e); }
     };
 
@@ -878,22 +904,6 @@ export default function Arena({
             {isEnemy ? t.phaseInfil : t.phaseSetup}
           </span>
                     <span className="phase-nuke">nuke: /bin/nuke_system</span>
-                </div>
-
-                {/* HP bars */}
-                <div className="hp-bar-wrap" id="hp-player">
-                    <span className="hp-label">{t.lblSysYou}</span>
-                    <div className="hp-track">
-                        <div className="hp-fill" style={{ width: `${myHP}%`, background: hpColor(myHP) }}/>
-                    </div>
-                    <span className="hp-pct" style={{ color: hpColor(myHP) }}>{myHP}%</span>
-                </div>
-                <div className="hp-bar-wrap" id="hp-enemy">
-                    <span className="hp-label">{t.lblSysEnemy}</span>
-                    <div className="hp-track">
-                        <div className="hp-fill" style={{ width: `${enemyHP}%`, background: hpColor(enemyHP) }}/>
-                    </div>
-                    <span className="hp-pct" style={{ color: hpColor(enemyHP) }}>{enemyHP}%</span>
                 </div>
 
                 <div id="notif" className={notif.show ? 'show' : ''}>{notif.msg}</div>

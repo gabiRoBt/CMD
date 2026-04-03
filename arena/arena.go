@@ -63,8 +63,8 @@ func NewArena(arenaID, hostPlayerID string) *Arena {
 		Host:           &Player{ID: hostPlayerID, Role: RoleHost, HP: 100},
 		Phase:          PhaseWaiting,
 		CreatedAt:      time.Now(),
-		SetupDuration:  150 * time.Second, // 2:30
-		AttackDuration: 300 * time.Second, // 5:00
+		SetupDuration:  210 * time.Second, // 3:30
+		AttackDuration: 180 * time.Second, // 3:00
 	}
 }
 

@@ -150,15 +150,6 @@ header {
 #phase-name  { font-size:10px; letter-spacing:.15em; font-family:monospace; justify-self:center; }
 .phase-nuke  { font-size:9px; color:#4A6741; letter-spacing:.1em; font-family:monospace; justify-self:end; opacity:.8; }
 
-/* ── HP BARS ── */
-.hp-bar-wrap { position:absolute; bottom:3%; display:flex; flex-direction:column; gap:2px; z-index:20; }
-#hp-player { left:5%; align-items:flex-start; }
-#hp-enemy  { right:5%; align-items:flex-end; }
-.hp-label  { font-size:9px; color:#fff; text-shadow:1px 1px 2px #000; font-family:monospace; letter-spacing:.08em; }
-.hp-track  { width:120px; height:5px; background:#1A2318; border:1px solid #000; }
-.hp-fill   { height:100%; transition:width .5s ease, background .5s ease; }
-.hp-pct    { font-size:8px; font-family:monospace; margin-top:1px; }
-
 /* ── TERMINAL — bigger default size ── */
 #terminal-win {
     position:fixed; left:25%; top:75px;
@@ -328,33 +319,36 @@ body.skin-classic .term-bubble-tail-left  { border-right-color:#2a5a8a; }
 body.skin-classic .term-bubble-tail-left::after  { border-right-color:#0f2035; }
 body.skin-classic .term-bubble-tail-right { border-left-color:#2a5a8a; }
 body.skin-classic .term-bubble-tail-right::after  { border-left-color:#0f2035; }
-body.skin-classic .hp-track       { background:#0d2030; }
 body.skin-classic #phase-bar      { background:rgba(10,25,40,0.9); border-bottom-color:#1a3a5a; }
 
-/* Siberia snow particles */
+/* Siberia snow particles — bigger flakes */
 @keyframes sib-snow {
     0%   { transform:translateY(-20px) translateX(0);   opacity:0; }
-    10%  { opacity:.7; }
-    90%  { opacity:.5; }
+    10%  { opacity:.85; }
+    90%  { opacity:.65; }
     100% { transform:translateY(110vh) translateX(20px); opacity:0; }
 }
 body.skin-classic #arena::before {
     content:''; position:absolute; inset:0; pointer-events:none; z-index:4;
     background-image:
-            radial-gradient(circle 2px at 8%  10%, rgba(220,240,255,0.8) 50%, transparent 50%),
-            radial-gradient(circle 1.5px at 23% 35%, rgba(220,240,255,0.7) 50%, transparent 50%),
-            radial-gradient(circle 2px at 40%  15%, rgba(220,240,255,0.75) 50%, transparent 50%),
-            radial-gradient(circle 1px at 60%  28%, rgba(220,240,255,0.6) 50%, transparent 50%),
-            radial-gradient(circle 2px at 78%  8%,  rgba(220,240,255,0.8) 50%, transparent 50%),
-            radial-gradient(circle 1.5px at 90% 42%, rgba(220,240,255,0.65) 50%, transparent 50%);
+            radial-gradient(circle 4px at 8%  10%, rgba(220,240,255,0.9) 50%, transparent 50%),
+            radial-gradient(circle 3px at 23% 35%, rgba(220,240,255,0.85) 50%, transparent 50%),
+            radial-gradient(circle 4.5px at 40%  15%, rgba(220,240,255,0.9) 50%, transparent 50%),
+            radial-gradient(circle 3px at 60%  28%, rgba(220,240,255,0.8) 50%, transparent 50%),
+            radial-gradient(circle 5px at 78%  8%,  rgba(220,240,255,0.9) 50%, transparent 50%),
+            radial-gradient(circle 3.5px at 90% 42%, rgba(220,240,255,0.8) 50%, transparent 50%),
+            radial-gradient(circle 4px at 50%  55%, rgba(220,240,255,0.75) 50%, transparent 50%),
+            radial-gradient(circle 2.5px at 15% 70%, rgba(220,240,255,0.7) 50%, transparent 50%);
     animation:sib-snow 6s linear infinite;
 }
 body.skin-classic #arena::after {
     content:''; position:absolute; inset:0; pointer-events:none; z-index:4;
     background-image:
-            radial-gradient(circle 1.5px at 30% 20%, rgba(220,240,255,0.7) 50%, transparent 50%),
-            radial-gradient(circle 2px at 65%  5%,  rgba(220,240,255,0.8) 50%, transparent 50%),
-            radial-gradient(circle 1px at 82%  32%, rgba(220,240,255,0.6) 50%, transparent 50%);
+            radial-gradient(circle 3.5px at 30% 20%, rgba(220,240,255,0.85) 50%, transparent 50%),
+            radial-gradient(circle 5px at 65%  5%,  rgba(220,240,255,0.9) 50%, transparent 50%),
+            radial-gradient(circle 3px at 82%  32%, rgba(220,240,255,0.75) 50%, transparent 50%),
+            radial-gradient(circle 4px at 12%  48%, rgba(220,240,255,0.8) 50%, transparent 50%),
+            radial-gradient(circle 3px at 55%  60%, rgba(220,240,255,0.7) 50%, transparent 50%);
     animation:sib-snow 8s linear infinite -3s;
 }
 
@@ -452,3 +446,37 @@ body.skin-wasteland #phase-bar     { background:rgba(15,8,2,0.9); border-bottom-
     75%      { transform:scaleY(1.2) scaleX(.85)  translateY(-3px); opacity:.7; }
 }
 .wl-fire { animation:wl-fire-flicker .4s ease-in-out infinite; transform-origin:bottom center; }
+
+/* Wasteland dust particles */
+@keyframes wl-dust {
+    0%   { transform:translateX(0)   translateY(0)  scale(1);   opacity:0; }
+    15%  { opacity:.75; }
+    85%  { opacity:.55; }
+    100% { transform:translateX(120px) translateY(-30px) scale(1.6); opacity:0; }
+}
+@keyframes wl-dust2 {
+    0%   { transform:translateX(0)   translateY(0)  scale(1);   opacity:0; }
+    15%  { opacity:.6; }
+    85%  { opacity:.4; }
+    100% { transform:translateX(-90px) translateY(-20px) scale(1.4); opacity:0; }
+}
+body.skin-wasteland #arena::before {
+    content:''; position:absolute; inset:0; pointer-events:none; z-index:4;
+    background-image:
+            radial-gradient(ellipse 10px 6px at 12% 72%, rgba(140,90,30,0.85) 50%, transparent 50%),
+            radial-gradient(ellipse 8px  5px at 30% 65%, rgba(120,75,25,0.8)  50%, transparent 50%),
+            radial-gradient(ellipse 12px 7px at 55% 78%, rgba(150,95,35,0.75) 50%, transparent 50%),
+            radial-gradient(ellipse 7px  4px at 72% 68%, rgba(130,80,28,0.8)  50%, transparent 50%),
+            radial-gradient(ellipse 9px  5px at 88% 74%, rgba(140,85,30,0.7)  50%, transparent 50%),
+            radial-gradient(ellipse 6px  4px at 42% 60%, rgba(110,70,22,0.65) 50%, transparent 50%);
+    animation:wl-dust 4s ease-in-out infinite;
+}
+body.skin-wasteland #arena::after {
+    content:''; position:absolute; inset:0; pointer-events:none; z-index:4;
+    background-image:
+            radial-gradient(ellipse 9px  5px at 20% 80%, rgba(130,82,28,0.8)  50%, transparent 50%),
+            radial-gradient(ellipse 11px 6px at 48% 70%, rgba(145,90,32,0.75) 50%, transparent 50%),
+            radial-gradient(ellipse 7px  4px at 78% 62%, rgba(120,75,25,0.7)  50%, transparent 50%),
+            radial-gradient(ellipse 8px  5px at 92% 82%, rgba(135,85,30,0.65) 50%, transparent 50%);
+    animation:wl-dust2 5.5s ease-in-out infinite -2s;
+}

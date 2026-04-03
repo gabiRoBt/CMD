@@ -28,6 +28,12 @@ function App() {
 
   useEffect(() => { document.body.className = skin; }, [skin]);
 
+  // Update the document title based on the current view
+  useEffect(() => {
+    const baseTitle = view === 'lobby' ? 'LOBBY' : 'ARENA';
+    document.title = `CMD : : ${baseTitle}`;
+  }, [view]);
+
   const startCountdown = (secs) => {
     clearInterval(countdownRef.current);
     setCountdown(secs);
@@ -59,13 +65,13 @@ function App() {
         setMyHP(100);
         setEnemyHP(100);
         setIncomingAbility(null);
-        startCountdown(ev.payload.setup_seconds || 150);
+        startCountdown(ev.payload.setup_seconds || 210);
         setView('arena');
         break;
 
       case 'phase_change':
         setPhase(ev.payload.phase);
-        if (ev.payload.phase === 'infiltrate') startCountdown(300);
+        if (ev.payload.phase === 'infiltrate') startCountdown(180);
         break;
 
       case 'pouch_result':

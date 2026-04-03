@@ -152,7 +152,7 @@ cmdhelp() {
   ║      /bin/nuke_system <password>                               ║
   ║    The password lives in  nuclearcodes.txt  on the enemy box.  ║
   ╠════════════════════════════════════════════════════════════════╣
-  ║  PHASE 1 — SETUP  (2 min 30 sec)                               ║
+  ║  PHASE 1 — SETUP  (3 min 30 sec)                               ║
   ║    You are on YOUR OWN container.                              ║
   ║                                                                ║
   ║    HIDE your nuclearcodes.txt:                                 ║
@@ -165,7 +165,7 @@ cmdhelp() {
   ║      mv ~/path/to/weapon_scramble_*.bin ~/pouch/               ║
   ║      Each weapon in ~/pouch = 1 ability unlocked.              ║
   ╠════════════════════════════════════════════════════════════════╣
-  ║  PHASE 2 — INFILTRATE  (5 min)                                 ║
+  ║  PHASE 2 — INFILTRATE  (3 min)                                 ║
   ║    Your terminal now connects to the ENEMY container.          ║
   ║                                                                ║
   ║    Search for their password:                                  ║
@@ -178,24 +178,22 @@ cmdhelp() {
   ╠════════════════════════════════════════════════════════════════╣
   ║  ABILITIES  (activate from the web UI footer bar)              ║
   ║                                                                ║
-  ║    🌀 SCRAMBLE   Scrambles enemy shell aliases       −20 HP    ║
+  ║    🌀 SCRAMBLE   Scrambles enemy shell aliases                  ║
   ║       Repair: resets aliases back to normal                    ║
   ║                                                                ║
-  ║    🚀 ROCKET     Freezes enemy terminal 10 seconds  −25 HP     ║
+  ║    🚀 ROCKET     Freezes enemy terminal 10 seconds              ║
   ║       Repair: unfreezes immediately                            ║
   ║                                                                ║
-  ║    📡 SONAR      Deletes enemy empty directories    −15 HP     ║
+  ║    📡 SONAR      Deletes enemy empty directories                ║
   ║       (cannot be repaired)                                     ║
   ║                                                                ║
-  ║    🔧 REPAIR     Counters last received attack       +15 HP    ║
+  ║    🔧 REPAIR     Counters last received attack                  ║
   ║       Must be used within 5 seconds of the attack.             ║
   ╠════════════════════════════════════════════════════════════════╣
   ║  TIPS                                                          ║
-  ║    • HP reaches 0 only via nuke — abilities cause disruption   ║
   ║    • REPAIR: works on scramble and rocket, not sonar           ║
   ║    • SCRAMBLE reverses: ls, find, cat, head, tail, grep...     ║
   ║    • SONAR is permanent — protect directories that matter      ║
-  ║    • The enemy sees your weapons too — conceal quickly!        ║
   ╚════════════════════════════════════════════════════════════════╝
 
 GUIDE

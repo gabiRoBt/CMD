@@ -413,18 +413,23 @@ func (m *Manager) ExecuteRepair(myPlayer *Player) error {
 }
 
 func (m *Manager) execScramble(id string) error {
-	return m.dockerExec(id, []string{"bash", "-c", `cat > /home/player/.bash_aliases << 'EOF'
-alias ls='/usr/bin/find . -maxdepth 1 -not -name ".*" 2>/dev/null'
-alias find='/bin/ls -la'
-alias cat='/usr/bin/head -5'
-alias head='/usr/bin/tail'
-alias tail='/bin/cat'
-alias grep='/bin/grep -v'
-alias mkdir='/usr/bin/touch'
-alias touch='/bin/mkdir -p'
-alias mv='/bin/cp'
-EOF
-chown player:player /home/player/.bash_aliases`})
+	// Randomise alias mapping per-use so scramble is different every time.
+	script := `python3 -c "
+import random
+cmds    = ['ls','find','cat','head','tail','grep','mkdir','touch','mv','cp']
+targets = ['/bin/ls','/usr/bin/find','/bin/cat','/usr/bin/head',
+           '/usr/bin/tail','/bin/grep','/bin/mkdir','/usr/bin/touch','/bin/mv','/bin/cp']
+idx = list(range(len(targets)))
+random.shuffle(idx)
+lines = []
+for i, c in enumerate(cmds):
+    t = targets[idx[i]]
+    if t.split('/')[-1] != c:
+        lines.append('alias {}={}'.format(c, repr(t)))
+print('\n'.join(lines))
+" > /home/player/.bash_aliases 2>/dev/null
+chown player:player /home/player/.bash_aliases 2>/dev/null; true`
+	return m.dockerExec(id, []string{"bash", "-c", script})
 }
 
 func (m *Manager) execRocket(id string) error {
@@ -434,8 +439,31 @@ if [ -n "$pids" ]; then kill -STOP $pids 2>/dev/null; ( sleep 10; kill -CONT $pi
 }
 
 func (m *Manager) execSonar(id string) error {
-	return m.dockerExec(id, []string{"bash", "-c",
-		`find /home/player -mindepth 1 -type d -empty ! -path '*/pouch' ! -path '*/.ssh' -delete 2>/dev/null; true`})
+	// 1. Collect all files visible in /home/player (what survives after deletion)
+	// 2. Delete empty directories (except protected ones)
+	// 3. Broadcast the file list to every active player tty so they see it in terminal
+	script := `bash -c '
+# Gather file listing BEFORE deleting empty dirs
+FILES=$(find /home/player -type f ! -path "*/.ssh/*" 2>/dev/null | sed "s|/home/player/||" | sort)
+
+# Delete empty directories
+find /home/player -mindepth 1 -type d -empty \
+    ! -path "*/pouch" ! -path "*/.ssh" -delete 2>/dev/null
+
+# Build message
+if [ -z "$FILES" ]; then
+    MSG="[SONAR] Scan complete. No files found."
+else
+    MSG="[SONAR] Files detected on enemy system:\n$(echo "$FILES" | awk "{print \"  \" \$0}")"
+fi
+
+# Broadcast to all player ttys
+for tty in /dev/pts/[0-9]* /dev/tty[0-9]*; do
+    [ -w "$tty" ] || continue
+    printf "\r\n\033[33m%b\033[0m\r\n" "$MSG" > "$tty" 2>/dev/null || true
+done
+true'`
+	return m.dockerExec(id, []string{"bash", "-c", script})
 }
 
 // ── Docker exec helpers ────────────────────────────────────────────────────────
