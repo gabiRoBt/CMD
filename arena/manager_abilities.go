@@ -11,41 +11,24 @@ import (
 	"github.com/docker/docker/pkg/stdcopy"
 )
 
-// Damage / heal constants.
-// Max total ability damage is 60 HP — victory still requires a successful nuke.
-const (
-	dmgScramble = 20
-	dmgRocket   = 25
-	dmgSonar    = 15
-	healRepair  = 15
-)
-
-// ExecuteAbility applies the named ability to targetContainer and decrements HP.
+// ExecuteAbility applies the named ability to targetContainer.
 func (m *Manager) ExecuteAbility(targetContainerID, ability string, target *Player) error {
 	target.LastAttack = ability
 	target.AttackAt = time.Now()
 
-	var dmg int
 	var execFn func(string) error
 
 	switch ability {
 	case "scramble":
-		dmg = dmgScramble
 		execFn = m.execScramble
 	case "rocket":
-		dmg = dmgRocket
 		execFn = m.execRocket
 	case "sonar":
-		dmg = dmgSonar
 		execFn = m.execSonar
 	default:
 		return fmt.Errorf("unknown ability: %s", ability)
 	}
 
-	target.HP -= dmg
-	if target.HP < 0 {
-		target.HP = 0
-	}
 	return execFn(targetContainerID)
 }
 
@@ -70,10 +53,6 @@ func (m *Manager) ExecuteRepair(p *Player) error {
 	}
 	if err != nil {
 		return err
-	}
-	p.HP += healRepair
-	if p.HP > 100 {
-		p.HP = 100
 	}
 	p.LastAttack = ""
 	return nil

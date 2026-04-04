@@ -9,7 +9,7 @@ import (
 
 // handleAbility processes an ability request during the Infiltrate phase.
 // It resolves both players, executes the ability (or repair), broadcasts the
-// HP update to both players, and returns the updated target HP.
+// ability_fired event to both players.
 func (s *Server) handleAbility(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method Not Allowed", 405)
@@ -58,9 +58,9 @@ func (s *Server) handleAbility(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.broadcastHPUpdate(a, updatedPlayer, req.Ability)
-	log.Printf("[Ability] %s → %s on %s | HP: %d", req.PlayerID, req.Ability, updatedPlayer.ID, updatedPlayer.HP)
-	writeJSON(w, map[string]interface{}{"status": "ok", "target_hp": updatedPlayer.HP})
+	s.broadcastAbilityFired(a, updatedPlayer, req.Ability)
+	log.Printf("[Ability] %s → %s on %s", req.PlayerID, req.Ability, updatedPlayer.ID)
+	writeJSON(w, map[string]interface{}{"status": "ok"})
 }
 
 // ── Game lifecycle notifications ──────────────────────────────────────────────
@@ -160,13 +160,12 @@ func (s *Server) resolvePlayers(a *Arena, playerID string) (me, enemy *Player) {
 	return nil, nil
 }
 
-func (s *Server) broadcastHPUpdate(a *Arena, target *Player, ability string) {
+func (s *Server) broadcastAbilityFired(a *Arena, target *Player, ability string) {
 	event := WSEvent{
-		Type: EventHPUpdate,
-		Payload: HPUpdatePayload{
+		Type: EventAbilityFired,
+		Payload: AbilityFiredPayload{
 			ArenaID:  a.ID,
 			TargetID: target.ID,
-			HP:       target.HP,
 			Ability:  ability,
 		},
 	}

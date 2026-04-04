@@ -6,8 +6,8 @@ import { SETUP_SECONDS, INFILTRATE_SECONDS, PHASE } from '../constants/game';
  * Returns the state slice and a stable `handleWSEvent` callback.
  */
 export function useGameState({ startCountdown, onGameStart }) {
-  const [phase,           setPhase]           = useState(null);
-  const [abilities,       setAbilities]       = useState([]);
+  const [phase, setPhase] = useState(null);
+  const [abilities, setAbilities] = useState([]);
   const [incomingAbility, setIncomingAbility] = useState(null);
 
   // playerID is stored in a ref so the WS closure never captures a stale value
@@ -36,9 +36,12 @@ export function useGameState({ startCountdown, onGameStart }) {
         setAbilities(ev.payload.abilities ?? []);
         break;
 
-      case 'hp_update': {
+      case 'ability_fired': {
         const { target_id, ability } = ev.payload;
-        if (target_id === playerIDRef.current && ability && ability !== 'repair') {
+        // Set incomingAbility for any event that targets us:
+        //   • scramble / rocket  → enemy attacked us  → activate debuff
+        //   • repair             → we repaired ourselves → cancel active debuff
+        if (target_id === playerIDRef.current && ability) {
           setIncomingAbility({ name: ability, id: Date.now() });
         }
         break;

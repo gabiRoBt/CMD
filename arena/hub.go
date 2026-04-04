@@ -11,13 +11,13 @@ import (
 type EventType string
 
 const (
-	EventArenaList   EventType = "arena_list"
-	EventGameStart   EventType = "game_start"
-	EventPhaseChange EventType = "phase_change"
-	EventPouchResult EventType = "pouch_result"
-	EventHPUpdate    EventType = "hp_update"
-	EventGameOver    EventType = "game_over"
-	EventError       EventType = "error"
+	EventArenaList    EventType = "arena_list"
+	EventGameStart    EventType = "game_start"
+	EventPhaseChange  EventType = "phase_change"
+	EventPouchResult  EventType = "pouch_result"
+	EventAbilityFired EventType = "ability_fired"
+	EventGameOver     EventType = "game_over"
+	EventError        EventType = "error"
 )
 
 type WSEvent struct {
@@ -45,13 +45,12 @@ type PouchResultPayload struct {
 	Abilities []string `json:"abilities"`
 }
 
-// HPUpdatePayload — broadcast after every ability/repair.
-// Ability field lets the targeted client render the correct incoming animation direction.
-type HPUpdatePayload struct {
+// AbilityFiredPayload — broadcast after every ability/repair.
+// Ability field lets the targeted client render the correct incoming animation.
+type AbilityFiredPayload struct {
 	ArenaID  string `json:"arena_id"`
-	TargetID string `json:"target_id"` // player whose HP changed
-	HP       int    `json:"hp"`
-	Ability  string `json:"ability"` // which ability was used (empty for draw/timeout)
+	TargetID string `json:"target_id"` // player who received the ability
+	Ability  string `json:"ability"`   // which ability was used
 }
 
 type GameOverPayload struct {

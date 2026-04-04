@@ -10,7 +10,6 @@
 }
 
 /* CRT scanlines inside terminal */
-#terminal-win { position:relative; overflow:hidden; }
 #terminal-win::after {
     content:''; position:absolute; inset:0; pointer-events:none; z-index:9999;
     background:repeating-linear-gradient(

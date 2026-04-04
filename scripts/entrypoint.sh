@@ -15,8 +15,8 @@ echo "$SECRET_PASSWORD" > /home/player/nuclearcodes.txt
 chmod 644 /home/player/nuclearcodes.txt
 chown player:player /home/player/nuclearcodes.txt
 
-SEED="${ARENA_ID:-default}"
-RAND_BYTE=$(echo "$SEED" | md5sum | tr -dc '0-9' | head -c 4)
+SEED="${ARENA_ID:-default}-${PLAYER_ROLE:-player}"
+RAND_BASE=$(echo "$SEED" | md5sum | tr -dc '0-9' | head -c 6)
 
 DIRS=(
     "Documents" "Documents/contracts" "Documents/invoices_2023"
@@ -95,30 +95,56 @@ chown -R player:player /home/player
 mkdir -p /home/player/pouch
 chown player:player /home/player/pouch
 
+# ── Weapon placement: random dir per ability, different per player/role ───────
 WEAPON_DIRS=(
-    "Documents" "Documents/invoices_2023" "Downloads"
-    "Downloads/temp" "Projects/company_site"
+    "Documents" "Documents/invoices_2023" "Documents/contracts"
+    "Downloads" "Downloads/temp" "Projects/company_site"
     "logs/archive" ".config/app" "tmp" "Music/Road_Playlist"
+    "Desktop" "Pictures/Vacation_Alps"
 )
 ABILITIES=(scramble repair rocket sonar)
 ABILITY_ENVS=(ABILITY_SCRAMBLE ABILITY_REPAIR ABILITY_ROCKET ABILITY_SONAR)
+
+# Seed = hash of arena+role → host and guest get different numbers
+SEED="${ARENA_ID:-default}${PLAYER_ROLE:-player}"
+RAND_BASE=$(printf '%s' "$SEED" | md5sum | tr -dc '0-9' | head -c 6)
+RAND_BASE=${RAND_BASE:-123456}
 
 for i in "${!ABILITIES[@]}"; do
     ability="${ABILITIES[$i]}"
     env_var="${ABILITY_ENVS[$i]}"
     hash_val="${!env_var}"
     [ -z "$hash_val" ] && continue
-    dir_idx=$(( (RAND_BYTE + i * 13) % ${#WEAPON_DIRS[@]} ))
+
+    # Each ability gets a pseudo-random dir, different per player (via RAND_BASE)
+    dir_idx=$(( (RAND_BASE + i * 37 + i * i) % ${#WEAPON_DIRS[@]} ))
     target_dir="/home/player/${WEAPON_DIRS[$dir_idx]}"
     mkdir -p "$target_dir"
-    suffix=$(cat /dev/urandom | tr -dc '0-9' | head -c 4)
+
+    # Random 4-digit suffix so find reveals the challenge
+    suffix=$(tr -dc '0-9' < /dev/urandom | head -c 4)
     weapon_file="$target_dir/weapon_${ability}_${suffix}.bin"
     printf '%s' "$hash_val" > "$weapon_file"
-    chown player:player "$weapon_file"
     chmod 644 "$weapon_file"
 done
 
-chown -R player:player /home/player
+
+chown -R player:player /home/player/
+
+# ── Phase-transition hook: delete uncollected weapon files ───────────────────
+# This script is called by the server (via docker exec) at setup→infiltrate
+cat > /home/player/.on_infiltrate.sh << 'HOOKEOF'
+#!/bin/bash
+# Remove all weapon_*.bin files outside ~/pouch (player didn't collect them)
+find /home/player -name 'weapon_*.bin' \
+    -not -path '/home/player/pouch/*' -delete 2>/dev/null
+# Clear all bash_aliases from scramble
+printf '' > /home/player/.bash_aliases 2>/dev/null
+true
+HOOKEOF
+chmod 700 /home/player/.on_infiltrate.sh
+chown player:player /home/player/.on_infiltrate.sh
+
 
 # ── MOTD ─────────────────────────────────────────────────────────────────────
 cat > /home/player/.motd << 'EOF'
@@ -164,6 +190,7 @@ cmdhelp() {
   ║      find ~/ -name "weapon_*.bin" 2>/dev/null                  ║
   ║      mv ~/path/to/weapon_scramble_*.bin ~/pouch/               ║
   ║      Each weapon in ~/pouch = 1 ability unlocked.              ║
+  ║      Uncollected weapons are DELETED at phase transition.      ║
   ╠════════════════════════════════════════════════════════════════╣
   ║  PHASE 2 — INFILTRATE  (3 min)                                 ║
   ║    Your terminal now connects to the ENEMY container.          ║
@@ -178,21 +205,26 @@ cmdhelp() {
   ╠════════════════════════════════════════════════════════════════╣
   ║  ABILITIES  (activate from the web UI footer bar)              ║
   ║                                                                ║
-  ║    🌀 SCRAMBLE   Scrambles enemy shell aliases                  ║
-  ║       Repair: resets aliases back to normal                    ║
+  ║    🌀 SCRAMBLE   Remaps YOUR terminal commands randomly 30s    ║
+  ║       When hit: type commands as normal, but execution will    ║
+  ║       be different (e.g. ls → rm, cd → find).                  ║
+  ║       A map file is written to /tmp/scramble_map.txt           ║
+  ║       if you get hit — use it to navigate the chaos.           ║
+  ║       Repair: cancels scramble immediately.                    ║
   ║                                                                ║
-  ║    🚀 ROCKET     Freezes enemy terminal 10 seconds              ║
-  ║       Repair: unfreezes immediately                            ║
+  ║    🚀 ROCKET     Blocks ALL your keyboard input for 15s        ║
+  ║       Repair: unblocks immediately.                            ║
   ║                                                                ║
-  ║    📡 SONAR      Deletes enemy empty directories                ║
+  ║    📡 SONAR      Reveals enemy files + deletes empty dirs      ║
   ║       (cannot be repaired)                                     ║
   ║                                                                ║
   ║    🔧 REPAIR     Counters last received attack                  ║
   ║       Must be used within 5 seconds of the attack.             ║
   ╠════════════════════════════════════════════════════════════════╣
   ║  TIPS                                                          ║
-  ║    • REPAIR: works on scramble and rocket, not sonar           ║
-  ║    • SCRAMBLE reverses: ls, find, cat, head, tail, grep...     ║
+  ║    • REPAIR works on scramble and rocket, not sonar            ║
+  ║    • SCRAMBLE: check /tmp/scramble_map.txt for the mapping     ║
+  ║    • Collect ALL weapons before phase ends — they disappear!   ║
   ║    • SONAR is permanent — protect directories that matter      ║
   ╚════════════════════════════════════════════════════════════════╝
 

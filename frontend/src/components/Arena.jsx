@@ -43,7 +43,20 @@ export default function Arena({
 
   // Incoming ability: enemy attacked us
   useEffect(() => {
-    if (incomingAbility) fireAnimation(incomingAbility.name, 'incoming');
+    if (!incomingAbility) return;
+    
+    // Repair has already fired its local base effect instantly via useAbilities.
+    if (incomingAbility.name !== 'repair') {
+      fireAnimation(incomingAbility.name, 'incoming');
+    }
+
+    const tw = termWinRef.current;
+    switch (incomingAbility.name) {
+      case 'scramble': tw?.activateScramble?.();     break;
+      case 'rocket':   tw?.activateRocket?.();        break;
+      case 'repair':   tw?.cancelActiveDebuff?.();    break;
+      default: break;
+    }
     // id changes on every attack, even repeated ones — intentional dep
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [incomingAbility?.id]);

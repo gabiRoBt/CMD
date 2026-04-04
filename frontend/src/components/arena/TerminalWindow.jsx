@@ -1,24 +1,42 @@
-import { forwardRef, useRef } from 'react';
+import { forwardRef, useRef, useImperativeHandle, useCallback } from 'react';
 import { useTerminal }  from '../../hooks/useTerminal';
 import { useDraggable } from '../../hooks/useDraggable';
+import { useScramble  } from '../../hooks/useScramble';
+import { useRocket    } from '../../hooks/useRocket';
 
 export const TerminalWindow = forwardRef(function TerminalWindow(
   { arenaID, playerID, phase, t, hidden },
   ref,
 ) {
   const bodyRef     = useRef(null);
-  const internalRef = useRef(null);
-  const winRef      = ref ?? internalRef;
+  const internalRef = useRef(null);  // always points to the real DOM node
 
-  useTerminal(bodyRef, { arenaID, playerID, phase });
-  useDraggable(winRef, '#term-drag-handle', '.resize-hint');
+  const { wsRef }                            = useTerminal(bodyRef, { arenaID, playerID, phase });
+  useDraggable(internalRef, '#term-drag-handle', '.resize-hint');
+  const { activateScramble, cancelScramble } = useScramble(wsRef);
+  const { activateRocket,   cancelRocket   } = useRocket(wsRef);
+
+  // Cancel whichever debuff is currently active (called by repair)
+  const cancelActiveDebuff = useCallback(() => {
+    cancelScramble();
+    cancelRocket();
+  }, [cancelScramble, cancelRocket]);
+
+  // Expose DOM access + ability controls to parent (Arena.jsx) via ref
+  useImperativeHandle(ref, () => ({
+    get current()          { return internalRef.current; },
+    getBoundingClientRect: () => internalRef.current?.getBoundingClientRect(),
+    activateScramble,
+    activateRocket,
+    cancelActiveDebuff,
+  }));
 
   const isEnemy = phase === 'infiltrate';
 
   return (
     <div
       id="terminal-win"
-      ref={winRef}
+      ref={internalRef}
       style={{ display: hidden ? 'none' : 'flex' }}
     >
       <div className="term-bubble-tail-left"  style={{ display: isEnemy ? 'none'  : 'block' }}/>

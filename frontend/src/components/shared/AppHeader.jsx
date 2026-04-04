@@ -1,11 +1,18 @@
+import { useEffect } from 'react';
 import { SKINS } from '../../constants/skins';
 import { formatTime } from '../../hooks/useCountdown';
 
 export function AppHeader({ view, lang, skin, wsStatus, playerID, countdown, phase, onSkinChange, onLangChange }) {
-  const isArena    = view === 'arena';
-  const isInfil    = phase === 'infiltrate';
+  const isArena = view === 'arena';
+
+  // Apply the skin class to <body> so all body.skin-* CSS selectors activate
+  useEffect(() => {
+    document.body.className = skin;
+    return () => { document.body.className = ''; };
+  }, [skin]);
+  const isInfil = phase === 'infiltrate';
   const phaseColor = isInfil ? 'var(--red)' : 'var(--amber)';
-  const wsOnline   = wsStatus === 'ONLINE';
+  const wsOnline = wsStatus === 'ONLINE';
 
   return (
     <header>
@@ -33,7 +40,7 @@ export function AppHeader({ view, lang, skin, wsStatus, playerID, countdown, pha
 
         <div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-            <span className="dot" style={{ background: wsOnline ? 'var(--green)' : 'var(--red)' }}/>
+            <span className="dot" style={{ background: wsOnline ? 'var(--green)' : 'var(--red)' }} />
             <span style={{ color: wsOnline ? 'var(--green)' : 'var(--red)' }}>
               {wsOnline ? 'ONLINE' : 'OFFLINE'}
             </span>

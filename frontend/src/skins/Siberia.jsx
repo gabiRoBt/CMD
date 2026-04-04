@@ -114,6 +114,40 @@ function SnowyTree({ style }) {
 export function SiberiaDecorations() {
   return (
     <>
+      {/* ── Frozen lake — zIndex 4, behind trees (5, 6) ── */}
+      <div style={{
+        position: 'absolute', bottom: '37%', left: '27%', right: '27%',
+        height: '7%', zIndex: 4, pointerEvents: 'none',
+      }}>
+        <svg width="100%" height="100%" viewBox="0 0 200 36" preserveAspectRatio="none"
+             xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <radialGradient id="lakeGrad" cx="50%" cy="50%" r="50%">
+              <stop offset="0%"   stopColor="#4a7aaa" stopOpacity="0.65"/>
+              <stop offset="60%"  stopColor="#2a5080" stopOpacity="0.80"/>
+              <stop offset="100%" stopColor="#1a3560" stopOpacity="0.90"/>
+            </radialGradient>
+            <radialGradient id="lakeShine" cx="35%" cy="30%" r="40%">
+              <stop offset="0%"   stopColor="#c8e8ff" stopOpacity="0.35"/>
+              <stop offset="100%" stopColor="#c8e8ff" stopOpacity="0"/>
+            </radialGradient>
+          </defs>
+          {/* Lake body */}
+          <ellipse cx="100" cy="18" rx="98" ry="16" fill="url(#lakeGrad)" stroke="#1a3560" strokeWidth="0.8" strokeOpacity="0.6"/>
+          {/* Specular shine */}
+          <ellipse cx="100" cy="18" rx="98" ry="16" fill="url(#lakeShine)"/>
+          {/* Ice crack lines */}
+          <path d="M60,14 L80,20 L95,12 L110,22 L130,15" fill="none" stroke="rgba(180,220,255,0.45)" strokeWidth="0.7"/>
+          <path d="M80,20 L85,28"                         fill="none" stroke="rgba(180,220,255,0.35)" strokeWidth="0.5"/>
+          <path d="M110,22 L115,30 L125,26"               fill="none" stroke="rgba(180,220,255,0.35)" strokeWidth="0.5"/>
+          <path d="M140,12 L155,20 L165,16"               fill="none" stroke="rgba(180,220,255,0.30)" strokeWidth="0.5"/>
+          <path d="M40,18  L55,24  L50,30"                fill="none" stroke="rgba(180,220,255,0.25)" strokeWidth="0.5"/>
+          {/* subtle reflection glints */}
+          <ellipse cx="72"  cy="15" rx="6" ry="2" fill="rgba(220,240,255,0.25)"/>
+          <ellipse cx="148" cy="20" rx="5" ry="2" fill="rgba(220,240,255,0.20)"/>
+        </svg>
+      </div>
+
       {TREES.map((tr, i) => (
         <SnowyTree key={i} style={{
           position: 'absolute', bottom: '36%',
@@ -121,20 +155,6 @@ export function SiberiaDecorations() {
           width: tr.size, zIndex: tr.zIndex, pointerEvents: 'none',
         }}/>
       ))}
-      <div style={{
-        position: 'absolute', bottom: '38%', left: '30%', right: '30%',
-        height: '6%', zIndex: 5, pointerEvents: 'none',
-        background: 'linear-gradient(to bottom, rgba(180,220,255,.25), rgba(140,200,240,.15))',
-        border: '1px solid rgba(160,210,255,.3)', borderRadius: 2,
-        boxShadow: 'inset 0 1px 0 rgba(255,255,255,.3)',
-      }}>
-        <svg width="100%" height="100%" viewBox="0 0 200 30" preserveAspectRatio="none">
-          <line x1="40"  y1="5"  x2="55"  y2="20" stroke="rgba(180,220,255,.4)"  strokeWidth="0.8"/>
-          <line x1="55"  y1="20" x2="70"  y2="12" stroke="rgba(180,220,255,.4)"  strokeWidth="0.8"/>
-          <line x1="100" y1="2"  x2="115" y2="18" stroke="rgba(180,220,255,.35)" strokeWidth="0.7"/>
-          <line x1="150" y1="8"  x2="165" y2="25" stroke="rgba(180,220,255,.3)"  strokeWidth="0.6"/>
-        </svg>
-      </div>
     </>
   );
 }
