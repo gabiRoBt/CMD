@@ -17,6 +17,7 @@ var upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 }
 
+// Server wires the HTTP layer to the Manager and Hub.
 type Server struct {
 	manager  *Manager
 	hub      *Hub
@@ -46,197 +47,7 @@ func (s *Server) Start(port int) error {
 	return http.ListenAndServe(fmt.Sprintf(":%d", port), mux)
 }
 
-// ── REST ──────────────────────────────────────────────────────────────────────
-
-func (s *Server) handleArenas(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, s.manager.ListArenas())
-}
-
-func (s *Server) handleCreateArena(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", 405)
-		return
-	}
-	var req struct {
-		PlayerID string `json:"player_id"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.PlayerID == "" {
-		http.Error(w, "player_id required", 400)
-		return
-	}
-	a, err := s.manager.CreateArena(req.PlayerID)
-	if err != nil {
-		http.Error(w, err.Error(), 500)
-		return
-	}
-	s.broadcastArenaList()
-	writeJSON(w, map[string]string{"arena_id": a.ID, "role": string(RoleHost)})
-}
-
-func (s *Server) handleJoinArena(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", 405)
-		return
-	}
-	var req struct {
-		ArenaID  string `json:"arena_id"`
-		PlayerID string `json:"player_id"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid JSON", 400)
-		return
-	}
-	_, err := s.manager.JoinArena(req.ArenaID, req.PlayerID)
-	if err != nil {
-		http.Error(w, err.Error(), 400)
-		return
-	}
-	s.broadcastArenaList()
-	writeJSON(w, map[string]string{"arena_id": req.ArenaID, "role": string(RoleGuest)})
-}
-
-func (s *Server) handleSetReady(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", 405)
-		return
-	}
-	var req struct {
-		ArenaID  string `json:"arena_id"`
-		PlayerID string `json:"player_id"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid JSON", 400)
-		return
-	}
-	a, err := s.manager.SetReady(req.ArenaID, req.PlayerID)
-	if err != nil {
-		http.Error(w, err.Error(), 400)
-		return
-	}
-
-	if a.Phase == PhaseSetup {
-		s.notifyGameStart(a)
-		s.manager.WatchForWinner(a, func(winner *Player) {
-			s.notifyGameOver(a, winner)
-			time.AfterFunc(1*time.Second, s.broadcastArenaList)
-		})
-		go s.watchPhaseTransition(a)
-	}
-
-	s.broadcastArenaList()
-	writeJSON(w, map[string]string{"status": "ok", "phase": string(a.Phase)})
-}
-
-func (s *Server) handleLeaveArena(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", 405)
-		return
-	}
-	var req struct {
-		ArenaID  string `json:"arena_id"`
-		PlayerID string `json:"player_id"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid JSON", 400)
-		return
-	}
-	a, ok := s.manager.arenas[req.ArenaID]
-	if !ok {
-		http.Error(w, "arena not found", 404)
-		return
-	}
-	if a.Phase != PhaseWaiting {
-		http.Error(w, "match already started", 403)
-		return
-	}
-	if a.Host != nil && a.Host.ID == req.PlayerID {
-		delete(s.manager.arenas, req.ArenaID)
-	} else if a.Guest != nil && a.Guest.ID == req.PlayerID {
-		a.Guest = nil
-	} else {
-		http.Error(w, "not in this arena", 403)
-		return
-	}
-	s.broadcastArenaList()
-	writeJSON(w, map[string]string{"status": "ok"})
-}
-
-func (s *Server) handleAbility(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method Not Allowed", 405)
-		return
-	}
-	var req struct {
-		ArenaID  string `json:"arena_id"`
-		PlayerID string `json:"player_id"`
-		Ability  string `json:"ability"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid JSON", 400)
-		return
-	}
-	a, ok := s.manager.arenas[req.ArenaID]
-	if !ok {
-		http.Error(w, "arena not found", 404)
-		return
-	}
-	if a.Phase != PhaseInfiltrate {
-		http.Error(w, "only in Infiltrate phase", 403)
-		return
-	}
-
-	var myPlayer, enemyPlayer *Player
-	if a.Host.ID == req.PlayerID {
-		myPlayer = a.Host
-		enemyPlayer = a.Guest
-	} else if a.Guest != nil && a.Guest.ID == req.PlayerID {
-		myPlayer = a.Guest
-		enemyPlayer = a.Host
-	} else {
-		http.Error(w, "player not in arena", 403)
-		return
-	}
-
-	var err error
-	var updatedPlayer *Player
-
-	if req.Ability == "repair" {
-		err = s.manager.ExecuteRepair(myPlayer)
-		updatedPlayer = myPlayer
-	} else {
-		err = s.manager.ExecuteAbility(enemyPlayer.ContainerID, req.Ability, enemyPlayer)
-		updatedPlayer = enemyPlayer
-	}
-
-	if err != nil {
-		log.Printf("[Ability] %s → %s: %v", req.PlayerID, req.Ability, err)
-		http.Error(w, err.Error(), 400)
-		return
-	}
-
-	// Broadcast HP update with ability name to BOTH players.
-	// The targeted player uses ability+target_id to render incoming animation from the enemy side.
-	hpEvent := WSEvent{
-		Type: EventHPUpdate,
-		Payload: HPUpdatePayload{
-			ArenaID:  req.ArenaID,
-			TargetID: updatedPlayer.ID,
-			HP:       updatedPlayer.HP,
-			Ability:  req.Ability,
-		},
-	}
-	if a.Host != nil {
-		s.hub.SendToPlayer(a.Host.ID, hpEvent)
-	}
-	if a.Guest != nil {
-		s.hub.SendToPlayer(a.Guest.ID, hpEvent)
-	}
-
-	log.Printf("[Ability] %s → %s on %s | HP target: %d", req.PlayerID, req.Ability, updatedPlayer.ID, updatedPlayer.HP)
-	writeJSON(w, map[string]interface{}{"status": "ok", "target_hp": updatedPlayer.HP})
-}
-
-// ── WebSocket ─────────────────────────────────────────────────────────────────
+// ── WebSocket — lobby events ──────────────────────────────────────────────────
 
 func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 	playerID := r.URL.Query().Get("player_id")
@@ -258,6 +69,8 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 	client.ReadPump(s.hub, nil)
 }
 
+// ── WebSocket — terminal proxy ────────────────────────────────────────────────
+
 func (s *Server) handleWSTerminal(w http.ResponseWriter, r *http.Request) {
 	arenaID := r.URL.Query().Get("arena_id")
 	playerID := r.URL.Query().Get("player_id")
@@ -270,6 +83,7 @@ func (s *Server) handleWSTerminal(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "arena not found", 404)
 		return
 	}
+
 	var targetPort int
 	switch a.Phase {
 	case PhaseSetup:
@@ -288,6 +102,7 @@ func (s *Server) handleWSTerminal(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "terminal unavailable in this phase", 403)
 		return
 	}
+
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		return
@@ -304,106 +119,14 @@ func (s *Server) handleStatic(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, "static/index.html")
 }
 
-// ── Notifications ─────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-func (s *Server) notifyGameStart(a *Arena) {
-	for _, p := range []*Player{a.Host, a.Guest} {
-		var port int
-		if p == a.Host {
-			port = a.Host.SSHPort
-		} else {
-			port = a.Guest.SSHPort
-		}
-		s.hub.SendToPlayer(p.ID, WSEvent{
-			Type: EventGameStart,
-			Payload: GameStartPayload{
-				ArenaID:    a.ID,
-				SSHCommand: s.sshCmd(port),
-				Role:       string(p.Role),
-				Phase:      string(PhaseSetup),
-				SetupSecs:  int(a.SetupDuration.Seconds()),
-			},
-		})
-	}
-}
-
-func (s *Server) watchPhaseTransition(a *Arena) {
-	time.Sleep(a.SetupDuration + 500*time.Millisecond)
-	if a.Phase != PhaseInfiltrate {
-		return
-	}
-
-	hostAbs := s.manager.ValidatePouch(a.Host.ContainerID, a.HostTokens)
-	guestAbs := s.manager.ValidatePouch(a.Guest.ContainerID, a.GuestTokens)
-	a.Host.Abilities = hostAbs
-	a.Guest.Abilities = guestAbs
-	log.Printf("[Arena %s] Pouch host: %v | guest: %v", a.ID, hostAbs, guestAbs)
-
-	s.hub.SendToPlayer(a.Host.ID, WSEvent{
-		Type: EventPhaseChange,
-		Payload: PhaseChangePayload{
-			ArenaID:    a.ID,
-			Phase:      string(PhaseInfiltrate),
-			SSHCommand: s.sshCmd(a.Guest.SSHPort),
-			MessageRO:  "⚔️ Attack the enemy container.",
-		},
-	})
-	s.hub.SendToPlayer(a.Guest.ID, WSEvent{
-		Type: EventPhaseChange,
-		Payload: PhaseChangePayload{
-			ArenaID:    a.ID,
-			Phase:      string(PhaseInfiltrate),
-			SSHCommand: s.sshCmd(a.Host.SSHPort),
-			MessageRO:  "⚔️ Attack the enemy container.",
-		},
-	})
-
-	s.hub.SendToPlayer(a.Host.ID, WSEvent{
-		Type:    EventPouchResult,
-		Payload: PouchResultPayload{ArenaID: a.ID, Abilities: hostAbs},
-	})
-	s.hub.SendToPlayer(a.Guest.ID, WSEvent{
-		Type:    EventPouchResult,
-		Payload: PouchResultPayload{ArenaID: a.ID, Abilities: guestAbs},
-	})
-
-	s.manager.RunAttackTimer(a, func() {
-		log.Printf("[Arena %s] Timeout — DRAW", a.ID)
-		for _, p := range []*Player{a.Host, a.Guest} {
-			s.hub.SendToPlayer(p.ID, WSEvent{
-				Type: EventGameOver,
-				Payload: GameOverPayload{
-					ArenaID: a.ID,
-					YouWon:  false,
-					Draw:    true,
-				},
-			})
-		}
-		time.AfterFunc(1*time.Second, s.broadcastArenaList)
-	})
-}
-
-func (s *Server) notifyGameOver(a *Arena, winner *Player) {
-	for _, p := range []*Player{a.Host, a.Guest} {
-		s.hub.SendToPlayer(p.ID, WSEvent{
-			Type: EventGameOver,
-			Payload: GameOverPayload{
-				ArenaID:    a.ID,
-				WinnerID:   winner.ID,
-				WinnerRole: string(winner.Role),
-				YouWon:     p.ID == winner.ID,
-				Draw:       false,
-			},
-		})
-	}
+func (s *Server) sshCmd(port int) string {
+	return fmt.Sprintf("ssh player@%s -p %d -i ~/.ssh/cmd_key", s.serverIP, port)
 }
 
 func (s *Server) broadcastArenaList() {
 	s.hub.Broadcast(WSEvent{Type: EventArenaList, Payload: s.manager.ListArenas()})
-}
-
-func (s *Server) sshCmd(port int) string {
-	return fmt.Sprintf("ssh player@%s -p %d -i ~/.ssh/cmd_key", s.serverIP, port)
 }
 
 func writeJSON(w http.ResponseWriter, v interface{}) {

@@ -21,3 +21,4 @@ yarn-error.log*
 
 # --- Diverse ---
 .DS_Store
+.aider*

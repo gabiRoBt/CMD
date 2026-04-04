@@ -1,0 +1,41 @@
+/* ── ARENA FOOTER ── */
+#arena-footer {
+    height:52px; background:var(--panel); border-top:1px solid var(--border);
+    display:flex; align-items:center; justify-content:space-between;
+    padding:0 var(--h-pad); gap:1rem; flex-shrink:0;
+    position:relative; z-index:60;
+}
+.footer-left, .footer-right {
+    display:flex; align-items:center; gap:.5rem;
+    min-width:120px; font-size:.65rem;
+}
+.footer-right  { justify-content:flex-end; }
+.footer-tag    { color:var(--text-dim); letter-spacing:.1em; font-size:.58rem; }
+.footer-id     { color:var(--green-dim); font-size:.6rem; max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.footer-role   { font-size:.72rem; font-weight:bold; letter-spacing:.1em; }
+
+/* ── POUCH ── */
+#pouch { display:flex; align-items:center; gap:8px; flex:1; justify-content:center; }
+.pouch-empty-msg { font-size:.65rem; color:var(--text-dim); letter-spacing:.08em; font-family:monospace; }
+
+/* ── ABILITY PILLS ── */
+.ability-pill {
+    position:relative; display:flex; align-items:center; gap:6px;
+    padding:0 14px 0 10px; height:34px; min-width:110px;
+    background:rgba(10,20,10,0.82); border:1px solid var(--ab-color,#4A6741);
+    border-radius:999px; cursor:pointer; overflow:hidden;
+    transition:background .15s; backdrop-filter:blur(4px);
+}
+.ability-pill:hover:not(.used) {
+    background:rgba(10,20,10,0.95);
+    box-shadow:0 0 10px color-mix(in srgb,var(--ab-color,#4A6741) 40%,transparent);
+}
+.ability-pill.used {
+    opacity:.35; cursor:not-allowed; filter:grayscale(1);
+    border-style:dashed; border-color:#2a2a2a !important; pointer-events:none;
+}
+.ab-icon        { font-size:13px; line-height:1; flex-shrink:0; }
+.ab-name        { font-size:9px; color:var(--ab-color,#7A9E72); font-family:'Share Tech Mono',monospace; text-transform:uppercase; letter-spacing:.12em; flex:1; }
+.ab-cd-progress { position:absolute; left:0; top:0; bottom:0; pointer-events:none; border-radius:999px; }
+.ab-key         { font-size:9px; color:var(--text-dim); font-family:'Share Tech Mono',monospace; flex-shrink:0; }
+.ab-used-tag    { font-size:8px; color:#333; font-family:'Share Tech Mono',monospace; flex-shrink:0; }

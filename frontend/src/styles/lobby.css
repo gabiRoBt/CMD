@@ -1,0 +1,56 @@
+/* ── LOBBY LAYOUT ── */
+.container {
+    max-width:1100px; margin:0 auto; padding:2rem;
+    display:grid; grid-template-columns:360px 1fr; gap:2rem;
+}
+
+/* ── PANEL ── */
+.panel {
+    background:var(--panel); border:1px solid var(--border);
+    padding:1.4rem; position:relative; margin-bottom:1rem;
+}
+.panel-label {
+    position:absolute; top:-1px; left:1rem; background:var(--bg);
+    padding:0 .5rem; font-size:.6rem; color:var(--green-dim); letter-spacing:.15em;
+}
+
+/* ── FORM FIELD ── */
+.field { margin-bottom:.9rem; }
+.field label {
+    display:block; font-size:.65rem; color:var(--text-dim);
+    letter-spacing:.1em; margin-bottom:.35rem;
+}
+.field input {
+    width:100%; background:#000; border:1px solid var(--border);
+    color:var(--green); font-family:'Share Tech Mono', monospace;
+    font-size:.82rem; padding:.45rem .65rem; outline:none; transition:border-color .2s;
+}
+
+/* ── BUTTONS ── */
+.btn {
+    font-family:'Share Tech Mono', monospace; font-size:.78rem;
+    letter-spacing:.1em; padding:.55rem 1rem; border:1px solid;
+    background:transparent; cursor:pointer; transition:all .15s;
+    text-transform:uppercase; width:100%; margin-top:.4rem;
+}
+.btn-green { border-color:var(--green); color:var(--green); }
+.btn-green:hover:not(:disabled) { background:var(--green); color:#000; box-shadow:0 0 20px rgba(0,255,65,.3); }
+.btn-amber { border-color:var(--amber); color:var(--amber); }
+.btn-amber:hover:not(:disabled) { background:var(--amber); color:#000; }
+.btn:disabled { opacity:.3; cursor:not-allowed; }
+
+/* ── ARENA LIST ── */
+.arena-list { min-height:60px; }
+.arena-item {
+    border:1px solid var(--border); padding:.7rem 1rem; margin-bottom:.4rem;
+    display:flex; align-items:center; justify-content:space-between;
+    cursor:pointer; transition:all .15s;
+}
+.arena-item:hover    { border-color:var(--green-dim); background:rgba(0,255,65,.02); }
+.arena-item.selected { border-color:var(--green);     background:rgba(0,255,65,.05); }
+.arena-id      { font-size:.72rem; color:var(--green-dim); }
+.arena-players { font-size:.65rem; color:var(--text-dim); margin-top:.2rem; }
+.empty-list {
+    color:var(--text-dim); font-size:.72rem; text-align:center;
+    padding:1.5rem 0; border:1px dashed var(--border);
+}

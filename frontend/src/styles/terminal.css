@@ -1,0 +1,61 @@
+/* ── TERMINAL WINDOW ── */
+#terminal-win {
+    position:fixed; left:25%; top:75px;
+    width:560px; min-width:320px; min-height:250px; height:420px;
+    background:#1A2318; border:1px solid #4A6741;
+    cursor:default; z-index:200;
+    box-shadow:4px 4px 0 #0a110a;
+    display:flex; flex-direction:column; resize:both; overflow:hidden;
+    border-radius:4px;
+}
+
+/* CRT scanlines inside terminal */
+#terminal-win { position:relative; overflow:hidden; }
+#terminal-win::after {
+    content:''; position:absolute; inset:0; pointer-events:none; z-index:9999;
+    background:repeating-linear-gradient(
+        0deg, transparent, transparent 2px,
+        rgba(0,0,0,0.22) 2px, rgba(0,0,0,0.22) 4px
+    );
+    border-radius:4px;
+}
+
+/* ── BUBBLE TAILS ── */
+.term-bubble-tail-left {
+    position:absolute; left:-11px; top:50%; transform:translateY(-50%);
+    width:0; height:0; border-style:solid;
+    border-width:8px 11px 8px 0;
+    border-color:transparent #4A6741 transparent transparent;
+    z-index:201;
+}
+.term-bubble-tail-left::after {
+    content:''; position:absolute; left:2px; top:-7px;
+    width:0; height:0; border-style:solid;
+    border-width:7px 10px 7px 0;
+    border-color:transparent #1A2318 transparent transparent;
+}
+
+.term-bubble-tail-right {
+    position:absolute; right:-11px; top:50%; transform:translateY(-50%);
+    width:0; height:0; border-style:solid;
+    border-width:8px 0 8px 11px;
+    border-color:transparent transparent transparent #4A6741;
+    z-index:201;
+}
+.term-bubble-tail-right::after {
+    content:''; position:absolute; right:2px; top:-7px;
+    width:0; height:0; border-style:solid;
+    border-width:7px 0 7px 10px;
+    border-color:transparent transparent transparent #1A2318;
+}
+
+/* ── TITLEBAR ── */
+.term-titlebar {
+    background:#2D4229; padding:5px 8px;
+    display:flex; align-items:center; justify-content:space-between;
+    cursor:move; flex-shrink:0; position:relative; z-index:1;
+}
+.term-titlebar span { font-size:10px; color:#7A9E72; letter-spacing:.1em; font-family:monospace; }
+.term-btns { display:flex; gap:4px; }
+.term-btn  { width:10px; height:10px; border-radius:50%; background:#4A6741; display:inline-block; }
+.resize-hint { font-size:12px; color:#4A6741; cursor:se-resize; user-select:none; padding:0 2px; }

@@ -1,0 +1,58 @@
+/* ── SIBERIA SKIN ── */
+body.skin-classic {
+    --green:#00ddff; --green-dim:#0088bb; --green-dark:#003344;
+    --amber:#66ccff; --red:#ff6688;
+    --bg:#030a10; --panel:#050f18; --border:#0a2a3a; --text:#00aacc; --text-dim:#004466;
+    --sky-bg:    linear-gradient(to bottom, #060d1a 0%, #0f2040 25%, #1a3a6a 50%, #4a7aaa 68%, #8ab4d4 78%, #c8dde8 86%, #eef6ff 94%, #f8faff 100%);
+    --ground-bg: linear-gradient(to bottom, #d8eeff 0%, #b8d8f0 30%, #90bce0 70%, #6898c8 100%);
+    --sep-color: #4a80b0;
+}
+body.skin-classic .top-band::after {
+    content:''; position:absolute; inset:0; pointer-events:none;
+    background:
+        radial-gradient(ellipse 55% 25% at 25% 65%, rgba(0,220,140,0.12) 0%, transparent 70%),
+        radial-gradient(ellipse 40% 18% at 72% 55%, rgba(0,140,255,0.09) 0%, transparent 70%),
+        radial-gradient(ellipse 30% 12% at 50% 30%, rgba(180,240,255,0.06) 0%, transparent 70%);
+}
+body.skin-classic .ground-deco {
+    background:
+        radial-gradient(ellipse 60px 18px at 20% 60%, rgba(220,240,255,0.7)  0%, transparent 70%),
+        radial-gradient(ellipse 40px 12px at 42% 75%, rgba(240,248,255,0.6)  0%, transparent 70%),
+        radial-gradient(ellipse 80px 20px at 65% 55%, rgba(200,228,248,0.5)  0%, transparent 70%),
+        radial-gradient(ellipse 35px 10px at 82% 70%, rgba(230,244,255,0.65) 0%, transparent 70%);
+}
+body.skin-classic .term-titlebar              { background:#1a3a5a; }
+body.skin-classic #terminal-win               { border-color:#2a5a8a; background:#0f2035; }
+body.skin-classic .term-btn                   { background:#2a5a8a; }
+body.skin-classic .term-bubble-tail-left        { border-right-color:#2a5a8a; }
+body.skin-classic .term-bubble-tail-left::after { border-right-color:#0f2035; }
+body.skin-classic .term-bubble-tail-right        { border-left-color:#2a5a8a; }
+body.skin-classic .term-bubble-tail-right::after { border-left-color:#0f2035; }
+body.skin-classic #phase-bar { background:rgba(10,25,40,0.9); border-bottom-color:#1a3a5a; }
+
+/* ── SNOW PARTICLES ── */
+@keyframes sib-snow {
+    0%   { transform:translateY(-20px) translateX(0);   opacity:0; }
+    10%  { opacity:.7; }
+    90%  { opacity:.5; }
+    100% { transform:translateY(110vh) translateX(20px); opacity:0; }
+}
+body.skin-classic #arena::before {
+    content:''; position:absolute; inset:0; pointer-events:none; z-index:4;
+    background-image:
+        radial-gradient(circle 2px   at  8% 10%, rgba(220,240,255,0.80) 50%, transparent 50%),
+        radial-gradient(circle 1.5px at 23% 35%, rgba(220,240,255,0.70) 50%, transparent 50%),
+        radial-gradient(circle 2px   at 40% 15%, rgba(220,240,255,0.75) 50%, transparent 50%),
+        radial-gradient(circle 1px   at 60% 28%, rgba(220,240,255,0.60) 50%, transparent 50%),
+        radial-gradient(circle 2px   at 78%  8%, rgba(220,240,255,0.80) 50%, transparent 50%),
+        radial-gradient(circle 1.5px at 90% 42%, rgba(220,240,255,0.65) 50%, transparent 50%);
+    animation:sib-snow 6s linear infinite;
+}
+body.skin-classic #arena::after {
+    content:''; position:absolute; inset:0; pointer-events:none; z-index:4;
+    background-image:
+        radial-gradient(circle 1.5px at 30% 20%, rgba(220,240,255,0.70) 50%, transparent 50%),
+        radial-gradient(circle 2px   at 65%  5%, rgba(220,240,255,0.80) 50%, transparent 50%),
+        radial-gradient(circle 1px   at 82% 32%, rgba(220,240,255,0.60) 50%, transparent 50%);
+    animation:sib-snow 8s linear infinite -3s;
+}

@@ -1,0 +1,35 @@
+/* ── WASTELAND SKIN ── */
+body.skin-wasteland {
+    --green:#d4a843; --green-dim:#8a6a20; --green-dark:#3a2a08;
+    --amber:#ff6600; --red:#ff4422;
+    --bg:#0d0805; --panel:#150e06; --border:#3a2a0a; --text:#c89a30; --text-dim:#5a4010;
+    --sky-bg:    linear-gradient(to bottom, #120a04 0%, #2a1208 20%, #4a2010 40%, #6b3318 60%, #8B5A2B 80%, #a07040 100%);
+    --ground-bg: linear-gradient(to bottom, #4a3020 0%, #3a2415 40%, #2a1a0a 100%);
+    --sep-color: #6b3318;
+}
+body.skin-wasteland .ground-deco {
+    background:
+        radial-gradient(ellipse 35px 12px at 18% 65%, rgba(90,55,20,0.70)  0%, transparent 70%),
+        radial-gradient(ellipse 50px 16px at 38% 78%, rgba(70,40,15,0.60)  0%, transparent 70%),
+        radial-gradient(ellipse 28px 10px at 55% 62%, rgba(100,60,20,0.55) 0%, transparent 70%),
+        radial-gradient(ellipse 60px 18px at 75% 72%, rgba(80,48,18,0.65)  0%, transparent 70%),
+        radial-gradient(circle  10px    at 28% 80%, rgba(50,30,10,0.80)    0%, transparent 70%),
+        radial-gradient(circle  12px    at 85% 76%, rgba(55,32,12,0.70)    0%, transparent 70%);
+}
+body.skin-wasteland .term-titlebar              { background:#2a1508; }
+body.skin-wasteland #terminal-win               { border-color:#5a3010; background:#150a04; }
+body.skin-wasteland .term-btn                   { background:#4a2808; }
+body.skin-wasteland .term-bubble-tail-left        { border-right-color:#5a3010; }
+body.skin-wasteland .term-bubble-tail-left::after { border-right-color:#150a04; }
+body.skin-wasteland .term-bubble-tail-right        { border-left-color:#5a3010; }
+body.skin-wasteland .term-bubble-tail-right::after { border-left-color:#150a04; }
+body.skin-wasteland #phase-bar { background:rgba(15,8,2,0.9); border-bottom-color:#3a2010; }
+
+/* ── FIRE FLICKER ── */
+@keyframes wl-fire-flicker {
+    0%,100% { transform:scaleY(1.00) scaleX(1.00) translateY(0);    opacity:.90; }
+    25%     { transform:scaleY(1.15) scaleX(0.88) translateY(-2px); opacity:.75; }
+    50%     { transform:scaleY(0.92) scaleX(1.10) translateY(0);    opacity:.85; }
+    75%     { transform:scaleY(1.20) scaleX(0.85) translateY(-3px); opacity:.70; }
+}
+.wl-fire { animation:wl-fire-flicker .4s ease-in-out infinite; transform-origin:bottom center; }

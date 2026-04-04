@@ -1,0 +1,64 @@
+/* ── RETRO / CYBERPUNK SKIN ── */
+body.skin-cyberpunk {
+    --green:#ff00ff; --green-dim:#aa00aa; --green-dark:#330033;
+    --amber:#ffff00; --red:#ff6666;
+    --bg:#050005; --panel:#0a000a; --border:#330033; --text:#cc00cc; --text-dim:#660066;
+    --sky-bg:    linear-gradient(to bottom, #050010 0%, #0f0820 30%, #1a0833 55%, #2d1550 75%, #1a0f40 100%);
+    --ground-bg: linear-gradient(to bottom, #1a0033 0%, #0d001f 50%, #060010 100%);
+    --sep-color: rgba(255,0,255,0.6);
+}
+body.skin-cyberpunk .ground-deco {
+    background:
+        linear-gradient(90deg, transparent  9%, rgba(255,0,255,0.12)  10%, transparent 11%),
+        linear-gradient(90deg, transparent 24%, rgba(255,255,0,0.08)  25%, transparent 26%),
+        linear-gradient(90deg, transparent 49%, rgba(255,0,255,0.10)  50%, transparent 51%),
+        linear-gradient(90deg, transparent 74%, rgba(255,255,0,0.12)  75%, transparent 76%),
+        linear-gradient(90deg, transparent 89%, rgba(255,0,255,0.10)  90%, transparent 91%);
+}
+body.skin-cyberpunk .term-titlebar              { background:#200040; }
+body.skin-cyberpunk #terminal-win               { border-color:#660088; background:#0a0018; }
+body.skin-cyberpunk .term-btn                   { background:#440066; }
+body.skin-cyberpunk .term-bubble-tail-left        { border-right-color:#660088; }
+body.skin-cyberpunk .term-bubble-tail-left::after { border-right-color:#0a0018; }
+body.skin-cyberpunk .term-bubble-tail-right        { border-left-color:#660088; }
+body.skin-cyberpunk .term-bubble-tail-right::after { border-left-color:#0a0018; }
+body.skin-cyberpunk #phase-bar { background:rgba(8,0,16,0.9); border-bottom-color:#330033; }
+
+/* ── CYBER SCANLINE ── */
+@keyframes cyber-scan-sweep { from{ top:-3px } to{ top:100% } }
+.cyber-scanline {
+    position:absolute; left:0; right:0; height:3px;
+    background:linear-gradient(90deg,
+        transparent 0%, rgba(255,0,255,0.6) 20%,
+        rgba(255,255,255,0.3) 50%,
+        rgba(255,0,255,0.6) 80%, transparent 100%);
+    box-shadow:0 0 12px rgba(255,0,255,0.5);
+    animation:cyber-scan-sweep 4s linear infinite;
+    pointer-events:none;
+}
+
+/* ── MATRIX COLUMNS ── */
+@keyframes matrix-fall {
+    from { background-position:0 -100px; }
+    to   { background-position:0  200px; }
+}
+.matrix-col {
+    position:absolute; inset:0;
+    background:repeating-linear-gradient(to bottom,
+        transparent,           transparent            8px,
+        rgba(255,0,255,0.30)   8px,  rgba(255,0,255,0.30)  10px,
+        transparent            10px, transparent            14px,
+        rgba(255,0,255,0.15)   14px, rgba(255,0,255,0.15)  16px,
+        transparent            16px, transparent            22px,
+        rgba(255,0,255,0.50)   22px, rgba(255,0,255,0.50)  24px
+    );
+    animation:matrix-fall 1.5s linear var(--delay,0s) infinite;
+}
+.matrix-col-alt {
+    background:repeating-linear-gradient(to bottom,
+        transparent,           transparent            6px,
+        rgba(255,255,0,0.30)   6px,  rgba(255,255,0,0.30)   8px,
+        transparent            8px,  transparent            16px,
+        rgba(255,255,0,0.50)   16px, rgba(255,255,0,0.50)  18px
+    );
+}

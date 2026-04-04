@@ -1,0 +1,25 @@
+/* ── DEV MODE SKIN ── */
+body.skin-dev-mode {
+    --green:#00ff41; --green-dim:#00aa2a; --green-dark:#003310;
+    --amber:#ffb300; --red:#ff3131;
+    --bg:#0a0804; --panel:#100e08; --border:#2a2010; --text:#cc9944; --text-dim:#664422;
+}
+body.skin-dev-mode .top-band {
+    background: url('assets/ceata.jpeg') center top / cover no-repeat,
+                linear-gradient(to bottom, #5a4020 0%, #8a6030 40%, #b08050 100%);
+}
+body.skin-dev-mode .bottom-band {
+    background: url('assets/nisip.jpeg') center / cover no-repeat,
+                linear-gradient(to bottom, #c8a060 0%, #b08848 50%, #907040 100%);
+}
+body.skin-dev-mode .band-separator  { background:rgba(20,14,8,0.7); height:3px; }
+body.skin-dev-mode .ground-deco     { display:none; }
+body.skin-dev-mode #phase-bar       { background:rgba(30,22,12,0.88); border-bottom-color:#4a3018; }
+body.skin-dev-mode .term-titlebar   { background:#3a2810; }
+body.skin-dev-mode #terminal-win    { border-color:#6a4820; background:#1a1208; }
+body.skin-dev-mode .term-btn        { background:#5a3818; }
+body.skin-dev-mode .term-bubble-tail-left        { border-right-color:#6a4820; }
+body.skin-dev-mode .term-bubble-tail-left::after { border-right-color:#1a1208; }
+body.skin-dev-mode .term-bubble-tail-right        { border-left-color:#6a4820; }
+body.skin-dev-mode .term-bubble-tail-right::after { border-left-color:#1a1208; }
+body.skin-dev-mode #arena-footer    { background:#100e08; border-top-color:#2a2010; }
