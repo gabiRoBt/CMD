@@ -41,6 +41,8 @@ type Player struct {
 
 type Arena struct {
 	ID         string
+	Name       string // display name chosen by creator
+	Type       string // "casual" or "competitive"
 	Host       *Player
 	Guest      *Player
 	Phase      Phase
@@ -54,16 +56,28 @@ type Arena struct {
 
 	HostTokens  AbilityTokens
 	GuestTokens AbilityTokens
+
+	// DB user IDs; 0 means anonymous / guest
+	HostUserID  int
+	GuestUserID int
 }
 
-func NewArena(arenaID, hostPlayerID string) *Arena {
+func NewArena(arenaID, hostPlayerID, name, arenaType string) *Arena {
+	if name == "" {
+		name = arenaID
+	}
+	if arenaType != "competitive" {
+		arenaType = "casual"
+	}
 	return &Arena{
 		ID:             arenaID,
+		Name:           name,
+		Type:           arenaType,
 		Host:           &Player{ID: hostPlayerID, Role: RoleHost},
 		Phase:          PhaseWaiting,
 		CreatedAt:      time.Now(),
-		SetupDuration:  210 * time.Second, // 3:30
-		AttackDuration: 180 * time.Second, // 3:00
+		SetupDuration:  210 * time.Second,
+		AttackDuration: 180 * time.Second,
 	}
 }
 

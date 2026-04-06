@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "prestart-all": "docker build -f Dockerfile.arena -t cmd-arena:latest .",
+    "prestart-all": "docker build -f Dockerfile.arena -t cmd-arena:latest . && docker start cmd-postgres || docker run --name cmd-postgres -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=cmd_arena -p 5432:5432 -d postgres:15-alpine",
     "start-all": "concurrently -c \"cyan.bold,magenta.bold,yellow.bold\" -n \"GO,VITE,NGROK\" \"go run main.go\" \"cd frontend && npm run dev\" \"ngrok http 5173 --log=stdout\""
   },
   "repository": {

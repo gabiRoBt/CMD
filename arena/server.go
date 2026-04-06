@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 var upgrader = websocket.Upgrader{
@@ -21,25 +22,39 @@ var upgrader = websocket.Upgrader{
 type Server struct {
 	manager  *Manager
 	hub      *Hub
+	db       *pgxpool.Pool
 	serverIP string
 }
 
-func NewServer(manager *Manager, hub *Hub) *Server {
+func NewServer(manager *Manager, hub *Hub, db *pgxpool.Pool) *Server {
 	ip := os.Getenv("SERVER_IP")
 	if ip == "" {
 		ip = "127.0.0.1"
 	}
-	return &Server{manager: manager, hub: hub, serverIP: ip}
+	return &Server{manager: manager, hub: hub, db: db, serverIP: ip}
 }
 
 func (s *Server) Start(port int) error {
 	mux := http.NewServeMux()
+
+	// Auth & Leaderboard
+	mux.HandleFunc("/api/auth/register", handleRegister(s.db))
+	mux.HandleFunc("/api/auth/login", handleLogin(s.db))
+	mux.HandleFunc("/api/auth/guest", handleGuest(s.db))
+	mux.HandleFunc("/api/auth/me", handleMe(s.db))
+	mux.HandleFunc("/api/auth/username", handleChangeUsername(s.db))
+	mux.HandleFunc("/api/leaderboard", handleLeaderboard(s.db))
+
 	mux.HandleFunc("/api/arenas", s.handleArenas)
-	mux.HandleFunc("/api/arena/create", s.handleCreateArena)
-	mux.HandleFunc("/api/arena/join", s.handleJoinArena)
+	// We want to pass auth down if possible, but for now we expect the client to wrap it or
+	// we handle the token manually. Let's wrap create/join with requireAuth so we have UserID.
+	mux.HandleFunc("/api/arena/create", requireAuth(s.db, s.handleCreateArenaAuth))
+	mux.HandleFunc("/api/arena/join", requireAuth(s.db, s.handleJoinArenaAuth))
+	mux.HandleFunc("/api/arena/my_status", requireAuth(s.db, s.handleMyArenaStatusAuth))
 	mux.HandleFunc("/api/arena/ready", s.handleSetReady)
 	mux.HandleFunc("/api/arena/leave", s.handleLeaveArena)
 	mux.HandleFunc("/api/ability", s.handleAbility)
+
 	mux.HandleFunc("/ws", s.handleWS)
 	mux.HandleFunc("/ws/terminal", s.handleWSTerminal)
 	mux.HandleFunc("/", s.handleStatic)

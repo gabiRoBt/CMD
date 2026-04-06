@@ -1,6 +1,7 @@
 package arena
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"time"
@@ -11,6 +12,8 @@ func (m *Manager) ListArenas() []ArenaView {
 	for _, a := range m.arenas {
 		view := ArenaView{
 			ID:       a.ID,
+			Name:     a.Name,
+			Type:     a.Type,
 			Phase:    string(a.Phase),
 			HostID:   a.Host.ID,
 			HasGuest: a.Guest != nil,
@@ -23,16 +26,17 @@ func (m *Manager) ListArenas() []ArenaView {
 	return views
 }
 
-func (m *Manager) CreateArena(hostPlayerID string) (*Arena, error) {
+func (m *Manager) CreateArena(hostPlayerID, name, arenaType string, hostUserID int) (*Arena, error) {
 	m.cancelPlayerLobbies(hostPlayerID)
 	arenaID := generateID("arena")
-	a := NewArena(arenaID, hostPlayerID)
+	a := NewArena(arenaID, hostPlayerID, name, arenaType)
+	a.HostUserID = hostUserID
 	m.arenas[arenaID] = a
-	log.Printf("[Arena %s] Created by %s", arenaID, hostPlayerID)
+	log.Printf("[Arena %s] Created by %s (type=%s)", arenaID, hostPlayerID, arenaType)
 	return a, nil
 }
 
-func (m *Manager) JoinArena(arenaID, guestPlayerID string) (*Arena, error) {
+func (m *Manager) JoinArena(arenaID, guestPlayerID string, guestUserID int) (*Arena, error) {
 	a, ok := m.arenas[arenaID]
 	if !ok {
 		return nil, fmt.Errorf("arena %s not found", arenaID)
@@ -45,6 +49,7 @@ func (m *Manager) JoinArena(arenaID, guestPlayerID string) (*Arena, error) {
 	}
 	m.cancelPlayerLobbies(guestPlayerID)
 	a.JoinGuest(guestPlayerID)
+	a.GuestUserID = guestUserID
 	log.Printf("[Arena %s] %s joined", arenaID, guestPlayerID)
 	return a, nil
 }
@@ -98,6 +103,17 @@ func (m *Manager) RunAttackTimer(a *Arena, onTimeout func()) {
 			log.Printf("[Arena %s] Timeout — draw", a.ID)
 			a.Phase = PhaseFinished
 			a.FinishedAt = time.Now()
+
+			if a.Type == "competitive" && m.db != nil {
+				if a.HostUserID > 0 && a.GuestUserID > 0 {
+					if err := UpdateELODraw(context.Background(), m.db, a.HostUserID, a.GuestUserID); err != nil {
+						log.Printf("[ELO] Draw update error: %v", err)
+					} else {
+						log.Printf("[ELO] Draw updated: %d and %d", a.HostUserID, a.GuestUserID)
+					}
+				}
+			}
+
 			m.cleanup(a)
 			onTimeout()
 		}
@@ -130,12 +146,28 @@ func (m *Manager) resolveWin(a *Arena, winner *Player, onWin func(*Player)) {
 	a.Phase = PhaseFinished
 	a.Winner = winner
 	a.FinishedAt = time.Now()
-	// Stop the compromised container (the loser's)
 	loser := a.Host
 	if winner == a.Host {
 		loser = a.Guest
 	}
 	m.stopContainer(loser.ContainerID)
+
+	// Update ELO for competitive matches between registered (non-guest) users
+	if a.Type == "competitive" && m.db != nil {
+		winnerUID := a.HostUserID
+		loserUID := a.GuestUserID
+		if winner == a.Guest {
+			winnerUID, loserUID = a.GuestUserID, a.HostUserID
+		}
+		if winnerUID > 0 && loserUID > 0 {
+			if err := UpdateELO(context.Background(), m.db, winnerUID, loserUID); err != nil {
+				log.Printf("[ELO] Update error: %v", err)
+			} else {
+				log.Printf("[ELO] Updated: winner=%d loser=%d", winnerUID, loserUID)
+			}
+		}
+	}
+
 	onWin(winner)
 	m.cleanup(a)
 }

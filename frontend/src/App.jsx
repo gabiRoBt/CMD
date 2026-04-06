@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 
 import { i18n }           from './i18n';
 import { useCountdown }   from './hooks/useCountdown';
@@ -6,8 +6,10 @@ import { useWebSocket }   from './hooks/useWebSocket';
 import { useGameState }   from './hooks/useGameState';
 
 import { AppHeader } from './components/shared/AppHeader';
+import { Auth }      from './components/Auth';
 import Lobby         from './components/Lobby';
 import Arena         from './components/Arena';
+import { api }       from './api';
 
 export default function App() {
   // ── Persistent UI preferences ────────────────────────────────────────────
@@ -16,7 +18,8 @@ export default function App() {
 
   // ── Connection & identity ────────────────────────────────────────────────
   const [wsStatus,  setWsStatus]  = useState('OFFLINE');
-  const [playerID,  setPlayerID]  = useState(null);
+  const [user,      setUser]      = useState(null); // {username, elo, isGuest}
+  const playerID = user?.username;
 
   // ── Lobby state ──────────────────────────────────────────────────────────
   const [arenaList, setArenaList] = useState([]);
@@ -24,7 +27,7 @@ export default function App() {
   const [role,      setRole]      = useState(null);
 
   // ── View ─────────────────────────────────────────────────────────────────
-  const [view, setView] = useState('lobby');
+  const [view, setView] = useState('auth'); // 'auth' | 'lobby' | 'arena'
 
   const { seconds: countdown, start: startCountdown, stop: stopCountdown } = useCountdown();
 
@@ -49,12 +52,68 @@ export default function App() {
 
   const { connect: connectWS } = useWebSocket(onWSEvent, setWsStatus);
 
+  // ── Auth initialization ──────────────────────────────────────────────────
+  useEffect(() => {
+    const initAuth = async () => {
+      try {
+        const u = await api.me();
+        if (u && u.username) {
+          // Inainte sa facem login success direct in lobby, verificam daca sunt intr-un meci
+          try {
+            const status = await api.myArenaStatus();
+            if (status && status.in_arena) {
+               // Reseteaza conexiunea si trimit direct in arena
+               setUser({ username: u.username, isGuest: u.is_guest, elo: u.elo || 0 });
+               playerIDRef.current = u.username;
+               connectWS(u.username);
+               setArenaID(status.arena_id);
+               setRole(status.role);
+               setView('arena');
+               return; // Exit
+            }
+          } catch(err) {
+             // Daca esueaza verificare, continuam standard in lobby
+          }
+
+          handleLoginSuccess({ username: u.username, isGuest: u.is_guest, elo: u.elo || 0 });
+        }
+      } catch (e) {
+        setView('auth');
+      }
+    };
+    if (localStorage.getItem('cmd_token')) {
+      initAuth();
+    } else {
+      setView('auth');
+    }
+
+    const onAuthExpired = () => {
+      setUser(null);
+      stopCountdown();
+      setView('auth');
+      setArenaID(null);
+      setRole(null);
+    };
+    window.addEventListener('auth_expired', onAuthExpired);
+    return () => window.removeEventListener('auth_expired', onAuthExpired);
+  }, []);
+
   // ── Actions ──────────────────────────────────────────────────────────────
-  const identify = useCallback((id) => {
-    playerIDRef.current = id;
-    setPlayerID(id);
-    connectWS(id);
+  const handleLoginSuccess = useCallback((userData) => {
+    setUser(userData);
+    playerIDRef.current = userData.username;
+    connectWS(userData.username);
+    setView('lobby');
   }, [connectWS, playerIDRef]);
+
+  const handleLogout = useCallback(() => {
+    localStorage.removeItem('cmd_token');
+    setUser(null);
+    stopCountdown();
+    setView('auth');
+    setArenaID(null);
+    setRole(null);
+  }, [stopCountdown]);
 
   const returnToLobby = useCallback(() => {
     stopCountdown();
@@ -72,20 +131,22 @@ export default function App() {
         lang={lang}
         skin={skin}
         wsStatus={wsStatus}
-        playerID={playerID}
+        user={user}
         countdown={countdown}
         phase={phase}
         onLangChange={setLang}
         onSkinChange={setSkin}
+        onLogout={handleLogout}
       />
 
-      {view === 'lobby' ? (
+      {view === 'auth' ? (
+        <Auth t={t} onLoginSuccess={handleLoginSuccess} />
+      ) : view === 'lobby' ? (
         <Lobby
           t={t}
-          playerID={playerID}
+          user={user}
           arenaID={arenaID}
           arenaList={arenaList}
-          onIdentify={identify}
           onUpdateArena={(id, r) => { setArenaID(id); setRole(r); }}
           onLeaveArena={() => { setArenaID(null); setRole(null); }}
         />

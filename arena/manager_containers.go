@@ -13,6 +13,7 @@ import (
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 const (
@@ -26,11 +27,12 @@ const (
 // Manager owns all running arenas and the Docker client.
 type Manager struct {
 	docker     *client.Client
+	db         *pgxpool.Pool
 	arenas     map[string]*Arena
 	MasterKeys *SSHKeyPair
 }
 
-func NewManager() (*Manager, error) {
+func NewManager(db *pgxpool.Pool) (*Manager, error) {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return nil, fmt.Errorf("cannot connect to Docker: %w", err)

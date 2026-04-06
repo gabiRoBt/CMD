@@ -12,19 +12,25 @@ func (s *Server) handleArenas(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, s.manager.ListArenas())
 }
 
-func (s *Server) handleCreateArena(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleCreateArenaAuth(w http.ResponseWriter, r *http.Request, c *Claims) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method Not Allowed", 405)
 		return
 	}
 	var req struct {
-		PlayerID string `json:"player_id"`
+		Name string `json:"name"`
+		Type string `json:"type"` // "casual" or "competitive"
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.PlayerID == "" {
-		http.Error(w, "player_id required", 400)
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		req.Name = c.Username + "'s Arena"
+		req.Type = "casual"
+	}
+	if c.IsGuest && req.Type == "competitive" {
+		http.Error(w, "guests cannot create competitive arenas", 403)
 		return
 	}
-	a, err := s.manager.CreateArena(req.PlayerID)
+
+	a, err := s.manager.CreateArena(c.Username, req.Name, req.Type, c.UserID)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return
@@ -33,20 +39,28 @@ func (s *Server) handleCreateArena(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]string{"arena_id": a.ID, "role": string(RoleHost)})
 }
 
-func (s *Server) handleJoinArena(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleJoinArenaAuth(w http.ResponseWriter, r *http.Request, c *Claims) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method Not Allowed", 405)
 		return
 	}
 	var req struct {
-		ArenaID  string `json:"arena_id"`
-		PlayerID string `json:"player_id"`
+		ArenaID string `json:"arena_id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid JSON", 400)
 		return
 	}
-	if _, err := s.manager.JoinArena(req.ArenaID, req.PlayerID); err != nil {
+
+	// Double check competitive for guests
+	if a, ok := s.manager.arenas[req.ArenaID]; ok {
+		if a.Type == "competitive" && c.IsGuest {
+			http.Error(w, "guests cannot join competitive arenas", 403)
+			return
+		}
+	}
+
+	if _, err := s.manager.JoinArena(req.ArenaID, c.Username, c.UserID); err != nil {
 		http.Error(w, err.Error(), 400)
 		return
 	}
@@ -116,4 +130,28 @@ func (s *Server) handleLeaveArena(w http.ResponseWriter, r *http.Request) {
 	}
 	s.broadcastArenaList()
 	writeJSON(w, map[string]string{"status": "ok"})
+}
+
+func (s *Server) handleMyArenaStatusAuth(w http.ResponseWriter, r *http.Request, c *Claims) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method Not Allowed", 405)
+		return
+	}
+
+	// Caută dacă jucătorul este host sau guest într-o arenă care nu s-a terminat
+	for id, a := range s.manager.arenas {
+		if a.Phase == PhaseFinished {
+			continue
+		}
+		if a.Host != nil && a.Host.ID == c.Username {
+			writeJSON(w, map[string]interface{}{"in_arena": true, "arena_id": id, "role": string(RoleHost)})
+			return
+		}
+		if a.Guest != nil && a.Guest.ID == c.Username {
+			writeJSON(w, map[string]interface{}{"in_arena": true, "arena_id": id, "role": string(RoleGuest)})
+			return
+		}
+	}
+
+	writeJSON(w, map[string]interface{}{"in_arena": false})
 }

@@ -1,25 +1,35 @@
-import { IdentifyPanel  } from './lobby/IdentifyPanel';
+import { Leaderboard    } from './Leaderboard';
 import { ArenaPanel     } from './lobby/ArenaPanel';
 import { ArenaListPanel } from './lobby/ArenaListPanel';
 
-export default function Lobby({ t, playerID, arenaID, arenaList, onIdentify, onUpdateArena, onLeaveArena }) {
+export default function Lobby({ t, user, arenaID, arenaList, onUpdateArena, onLeaveArena }) {
+  const currentArena = arenaList.find(a => a.id === arenaID);
+
   return (
-    <div className="container">
+    <div className="lobby-grid">
       <div>
-        {!playerID
-          ? <IdentifyPanel t={t} onIdentify={onIdentify}/>
-          : <ArenaPanel    t={t} playerID={playerID} arenaID={arenaID} onUpdateArena={onUpdateArena} onLeaveArena={onLeaveArena}/>
-        }
+        <ArenaPanel 
+          t={t} 
+          user={user} 
+          arenaID={arenaID} 
+          currentArena={currentArena}
+          onUpdateArena={onUpdateArena} 
+          onLeaveArena={onLeaveArena}
+        />
       </div>
 
       <div>
         <ArenaListPanel
           t={t}
-          playerID={playerID}
+          user={user}
           arenaID={arenaID}
           arenaList={arenaList}
           onUpdateArena={onUpdateArena}
         />
+      </div>
+
+      <div className="lobby-grid-bottom">
+        <Leaderboard t={t} currentUsername={user?.username} />
       </div>
     </div>
   );

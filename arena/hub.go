@@ -63,6 +63,8 @@ type GameOverPayload struct {
 
 type ArenaView struct {
 	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Type     string `json:"type"`
 	Phase    string `json:"phase"`
 	HostID   string `json:"host_id"`
 	GuestID  string `json:"guest_id,omitempty"`
