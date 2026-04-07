@@ -21,3 +21,6 @@ yarn-error.log*
 
 # --- Diverse ---
 .DS_Store
+
+.env
+

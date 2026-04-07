@@ -1,17 +1,28 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { SETUP_SECONDS, INFILTRATE_SECONDS, PHASE } from '../constants/game';
 
 /**
  * Owns every piece of state that the WS event stream can mutate during a match.
  * Returns the state slice and a stable `handleWSEvent` callback.
  */
-export function useGameState({ startCountdown, onGameStart }) {
-  const [phase, setPhase] = useState(null);
-  const [abilities, setAbilities] = useState([]);
+export function useGameState({ startCountdown, stopCountdown, onGameStart, initialState }) {
+  const [phase, setPhase] = useState(initialState?.phase || null);
+  const [abilities, setAbilities] = useState(initialState?.abilities || []);
   const [incomingAbility, setIncomingAbility] = useState(null);
 
   // playerID is stored in a ref so the WS closure never captures a stale value
   const playerIDRef = useRef(null);
+
+  // Restore state if refreshing mid-game
+  useEffect(() => {
+    if (initialState) {
+      if (initialState.phase) setPhase(initialState.phase);
+      if (initialState.abilities) setAbilities(initialState.abilities);
+      if (initialState.phase && initialState.time_left > 0) {
+        startCountdown(initialState.time_left);
+      }
+    }
+  }, [initialState, startCountdown]);
 
   const handleWSEvent = useCallback((ev) => {
     switch (ev.type) {
@@ -48,13 +59,14 @@ export function useGameState({ startCountdown, onGameStart }) {
       }
 
       case 'game_over':
+        stopCountdown();
         window.dispatchEvent(new CustomEvent('gameOver', { detail: ev.payload }));
         break;
 
       default:
         break;
     }
-  }, [startCountdown, onGameStart]);
+  }, [startCountdown, stopCountdown, onGameStart]);
 
   return { phase, abilities, incomingAbility, playerIDRef, handleWSEvent };
 }

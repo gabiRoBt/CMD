@@ -1,4 +1,4 @@
-package arena
+package manager
 
 import "time"
 
@@ -19,7 +19,6 @@ const (
 )
 
 // AbilityTokens — hash-uri random, injectate ca env vars în container.
-// Fișierele din ~/pouch/ sunt validate: basename ∋ key AND content == hash.
 type AbilityTokens struct {
 	Scramble string
 	Repair   string
@@ -60,6 +59,16 @@ type Arena struct {
 	// DB user IDs; 0 means anonymous / guest
 	HostUserID  int
 	GuestUserID int
+}
+
+type ArenaView struct {
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Type     string `json:"type"`
+	Phase    string `json:"phase"`
+	HostID   string `json:"host_id"`
+	GuestID  string `json:"guest_id,omitempty"`
+	HasGuest bool   `json:"has_guest"`
 }
 
 func NewArena(arenaID, hostPlayerID, name, arenaType string) *Arena {

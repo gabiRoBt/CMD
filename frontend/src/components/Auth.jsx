@@ -33,7 +33,7 @@ export function Auth({
       }
 
       if (res && res.token) {
-        localStorage.setItem('cmd_token', res.token);
+        sessionStorage.setItem('cmd_token', res.token);
         onLoginSuccess({
           username: res.username,
           elo: res.elo,

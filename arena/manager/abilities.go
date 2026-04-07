@@ -1,4 +1,4 @@
-package arena
+package manager
 
 import (
 	"bytes"
@@ -60,7 +60,6 @@ func (m *Manager) ExecuteRepair(p *Player) error {
 
 // ── Ability implementations ───────────────────────────────────────────────────
 
-// execScramble randomises command aliases via Python so the mapping differs each time.
 func (m *Manager) execScramble(id string) error {
 	script := `python3 -c "
 import random
@@ -80,15 +79,12 @@ chown player:player /home/player/.bash_aliases 2>/dev/null; true`
 	return m.dockerExec(id, []string{"bash", "-c", script})
 }
 
-// execRocket freezes all player bash processes for 10 seconds.
 func (m *Manager) execRocket(id string) error {
 	return m.dockerExec(id, []string{"bash", "-c",
 		`pids=$(pgrep -u player -f bash 2>/dev/null)
 if [ -n "$pids" ]; then kill -STOP $pids 2>/dev/null; ( sleep 10; kill -CONT $pids 2>/dev/null ) & fi`})
 }
 
-// execSonar lists all files, deletes empty directories, and broadcasts the
-// file listing to every active player tty.
 func (m *Manager) execSonar(id string) error {
 	script := `bash -c '
 FILES=$(find /home/player -type f ! -path "*/.ssh/*" 2>/dev/null \
@@ -113,8 +109,6 @@ true'`
 
 // ── Pouch validation ──────────────────────────────────────────────────────────
 
-// ValidatePouch reads ~/pouch/, matches filenames+contents against the arena tokens,
-// and returns the list of unlocked ability names.
 func (m *Manager) ValidatePouch(containerID string, tokens AbilityTokens) []string {
 	script := `for f in /home/player/pouch/*; do
     [ -f "$f" ] || continue

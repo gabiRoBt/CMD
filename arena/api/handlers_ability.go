@@ -1,6 +1,8 @@
-package arena
+package api
 
 import (
+	"CMD/arena/manager"
+	"CMD/arena/ws"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -8,8 +10,6 @@ import (
 )
 
 // handleAbility processes an ability request during the Infiltrate phase.
-// It resolves both players, executes the ability (or repair), broadcasts the
-// ability_fired event to both players.
 func (s *Server) handleAbility(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method Not Allowed", 405)
@@ -25,12 +25,12 @@ func (s *Server) handleAbility(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	a, ok := s.manager.arenas[req.ArenaID]
+	a, ok := s.manager.GetArena(req.ArenaID)
 	if !ok {
 		http.Error(w, "arena not found", 404)
 		return
 	}
-	if a.Phase != PhaseInfiltrate {
+	if a.Phase != manager.PhaseInfiltrate {
 		http.Error(w, "only in Infiltrate phase", 403)
 		return
 	}
@@ -43,7 +43,7 @@ func (s *Server) handleAbility(w http.ResponseWriter, r *http.Request) {
 
 	var (
 		err           error
-		updatedPlayer *Player
+		updatedPlayer *manager.Player
 	)
 	if req.Ability == "repair" {
 		err = s.manager.ExecuteRepair(myPlayer)
@@ -65,28 +65,28 @@ func (s *Server) handleAbility(w http.ResponseWriter, r *http.Request) {
 
 // ── Game lifecycle notifications ──────────────────────────────────────────────
 
-func (s *Server) notifyGameStart(a *Arena) {
-	for _, p := range []*Player{a.Host, a.Guest} {
+func (s *Server) notifyGameStart(a *manager.Arena) {
+	for _, p := range []*manager.Player{a.Host, a.Guest} {
 		port := a.Host.SSHPort
 		if p == a.Guest {
 			port = a.Guest.SSHPort
 		}
-		s.hub.SendToPlayer(p.ID, WSEvent{
-			Type: EventGameStart,
-			Payload: GameStartPayload{
+		s.hub.SendToPlayer(p.ID, ws.WSEvent{
+			Type: ws.EventGameStart,
+			Payload: ws.GameStartPayload{
 				ArenaID:    a.ID,
 				SSHCommand: s.sshCmd(port),
 				Role:       string(p.Role),
-				Phase:      string(PhaseSetup),
+				Phase:      string(manager.PhaseSetup),
 				SetupSecs:  int(a.SetupDuration.Seconds()),
 			},
 		})
 	}
 }
 
-func (s *Server) watchPhaseTransition(a *Arena) {
+func (s *Server) watchPhaseTransition(a *manager.Arena) {
 	time.Sleep(a.SetupDuration + 500*time.Millisecond)
-	if a.Phase != PhaseInfiltrate {
+	if a.Phase != manager.PhaseInfiltrate {
 		return
 	}
 
@@ -96,7 +96,7 @@ func (s *Server) watchPhaseTransition(a *Arena) {
 	a.Guest.Abilities = guestAbs
 	log.Printf("[Arena %s] Pouch — host: %v | guest: %v", a.ID, hostAbs, guestAbs)
 
-	for _, p := range []*Player{a.Host, a.Guest} {
+	for _, p := range []*manager.Player{a.Host, a.Guest} {
 		enemyPort := a.Guest.SSHPort
 		if p == a.Guest {
 			enemyPort = a.Host.SSHPort
@@ -105,38 +105,38 @@ func (s *Server) watchPhaseTransition(a *Arena) {
 		if p == a.Guest {
 			abs = guestAbs
 		}
-		s.hub.SendToPlayer(p.ID, WSEvent{
-			Type: EventPhaseChange,
-			Payload: PhaseChangePayload{
+		s.hub.SendToPlayer(p.ID, ws.WSEvent{
+			Type: ws.EventPhaseChange,
+			Payload: ws.PhaseChangePayload{
 				ArenaID:    a.ID,
-				Phase:      string(PhaseInfiltrate),
+				Phase:      string(manager.PhaseInfiltrate),
 				SSHCommand: s.sshCmd(enemyPort),
 				MessageRO:  "⚔️ Attack the enemy container.",
 			},
 		})
-		s.hub.SendToPlayer(p.ID, WSEvent{
-			Type:    EventPouchResult,
-			Payload: PouchResultPayload{ArenaID: a.ID, Abilities: abs},
+		s.hub.SendToPlayer(p.ID, ws.WSEvent{
+			Type:    ws.EventPouchResult,
+			Payload: ws.PouchResultPayload{ArenaID: a.ID, Abilities: abs},
 		})
 	}
 
 	s.manager.RunAttackTimer(a, func() {
 		log.Printf("[Arena %s] Timeout — DRAW", a.ID)
-		for _, p := range []*Player{a.Host, a.Guest} {
-			s.hub.SendToPlayer(p.ID, WSEvent{
-				Type:    EventGameOver,
-				Payload: GameOverPayload{ArenaID: a.ID, YouWon: false, Draw: true},
+		for _, p := range []*manager.Player{a.Host, a.Guest} {
+			s.hub.SendToPlayer(p.ID, ws.WSEvent{
+				Type:    ws.EventGameOver,
+				Payload: ws.GameOverPayload{ArenaID: a.ID, YouWon: false, Draw: true},
 			})
 		}
 		time.AfterFunc(1*time.Second, s.broadcastArenaList)
 	})
 }
 
-func (s *Server) notifyGameOver(a *Arena, winner *Player) {
-	for _, p := range []*Player{a.Host, a.Guest} {
-		s.hub.SendToPlayer(p.ID, WSEvent{
-			Type: EventGameOver,
-			Payload: GameOverPayload{
+func (s *Server) notifyGameOver(a *manager.Arena, winner *manager.Player) {
+	for _, p := range []*manager.Player{a.Host, a.Guest} {
+		s.hub.SendToPlayer(p.ID, ws.WSEvent{
+			Type: ws.EventGameOver,
+			Payload: ws.GameOverPayload{
 				ArenaID:    a.ID,
 				WinnerID:   winner.ID,
 				WinnerRole: string(winner.Role),
@@ -149,8 +149,7 @@ func (s *Server) notifyGameOver(a *Arena, winner *Player) {
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
-// resolvePlayers returns (caller, opponent) for a given playerID in an arena.
-func (s *Server) resolvePlayers(a *Arena, playerID string) (me, enemy *Player) {
+func (s *Server) resolvePlayers(a *manager.Arena, playerID string) (me, enemy *manager.Player) {
 	if a.Host.ID == playerID {
 		return a.Host, a.Guest
 	}
@@ -160,16 +159,16 @@ func (s *Server) resolvePlayers(a *Arena, playerID string) (me, enemy *Player) {
 	return nil, nil
 }
 
-func (s *Server) broadcastAbilityFired(a *Arena, target *Player, ability string) {
-	event := WSEvent{
-		Type: EventAbilityFired,
-		Payload: AbilityFiredPayload{
+func (s *Server) broadcastAbilityFired(a *manager.Arena, target *manager.Player, ability string) {
+	event := ws.WSEvent{
+		Type: ws.EventAbilityFired,
+		Payload: ws.AbilityFiredPayload{
 			ArenaID:  a.ID,
 			TargetID: target.ID,
 			Ability:  ability,
 		},
 	}
-	for _, p := range []*Player{a.Host, a.Guest} {
+	for _, p := range []*manager.Player{a.Host, a.Guest} {
 		if p != nil {
 			s.hub.SendToPlayer(p.ID, event)
 		}

@@ -49,14 +49,17 @@ export function useTerminal(containerRef, { arenaID, playerID, phase }) {
     });
 
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-    const ws    = new WebSocket(
-      `${proto}://${location.host}/ws/terminal?arena_id=${arenaID}&player_id=${playerID}`,
-    );
+    const url   = `${proto}://${location.host}/ws/terminal?arena_id=${arenaID}&player_id=${playerID}`;
+
+    term.write('\x1b[90m[connecting to container...]\x1b[0m\r\n');
+
+    const ws       = new WebSocket(url);
     wsRef.current  = ws;
     ws.binaryType  = 'arraybuffer';
     ws.onmessage   = (e) => term.write(e.data instanceof ArrayBuffer ? new Uint8Array(e.data) : e.data);
-    ws.onopen      = () => term.focus();
+    ws.onopen      = () => { term.write('\x1b[32m[connected]\x1b[0m\r\n'); term.focus(); };
     ws.onclose     = () => term.write('\r\n\x1b[31m[connection closed]\x1b[0m\r\n');
+    ws.onerror     = () => term.write('\r\n\x1b[33m[WS error — Docker may not be running]\x1b[0m\r\n');
     term.onData((d) => { if (ws.readyState === WebSocket.OPEN) ws.send(d); });
 
     const onResize = () => { try { fitAddon.fit(); } catch (_) {} };

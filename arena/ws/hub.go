@@ -1,4 +1,4 @@
-package arena
+package ws
 
 import (
 	"encoding/json"
@@ -46,11 +46,10 @@ type PouchResultPayload struct {
 }
 
 // AbilityFiredPayload — broadcast after every ability/repair.
-// Ability field lets the targeted client render the correct incoming animation.
 type AbilityFiredPayload struct {
 	ArenaID  string `json:"arena_id"`
-	TargetID string `json:"target_id"` // player who received the ability
-	Ability  string `json:"ability"`   // which ability was used
+	TargetID string `json:"target_id"`
+	Ability  string `json:"ability"`
 }
 
 type GameOverPayload struct {
@@ -61,21 +60,22 @@ type GameOverPayload struct {
 	Draw       bool   `json:"draw"`
 }
 
-type ArenaView struct {
-	ID       string `json:"id"`
-	Name     string `json:"name"`
-	Type     string `json:"type"`
-	Phase    string `json:"phase"`
-	HostID   string `json:"host_id"`
-	GuestID  string `json:"guest_id,omitempty"`
-	HasGuest bool   `json:"has_guest"`
-}
-
 type Client struct {
 	conn     *websocket.Conn
 	send     chan []byte
 	playerID string
-	arenaID  string
+}
+
+func NewClient(conn *websocket.Conn, playerID string) *Client {
+	return &Client{
+		conn:     conn,
+		send:     make(chan []byte, 64),
+		playerID: playerID,
+	}
+}
+
+func (c *Client) PlayerID() string {
+	return c.playerID
 }
 
 type Hub struct {
@@ -85,7 +85,7 @@ type Hub struct {
 	broadcast chan []byte
 	direct    chan directMessage
 
-	register   chan *Client
+	Register   chan *Client
 	unregister chan *Client
 }
 
@@ -99,7 +99,7 @@ func NewHub() *Hub {
 		clients:    make(map[*Client]bool),
 		broadcast:  make(chan []byte, 256),
 		direct:     make(chan directMessage, 256),
-		register:   make(chan *Client),
+		Register:   make(chan *Client),
 		unregister: make(chan *Client),
 	}
 }
@@ -107,7 +107,7 @@ func NewHub() *Hub {
 func (h *Hub) Run() {
 	for {
 		select {
-		case client := <-h.register:
+		case client := <-h.Register:
 			h.mu.Lock()
 			h.clients[client] = true
 			h.mu.Unlock()

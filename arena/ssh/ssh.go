@@ -1,4 +1,4 @@
-package arena
+package ssh
 
 import (
 	"crypto/rand"
@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/gorilla/websocket"
-	"golang.org/x/crypto/ssh"
+	gossh "golang.org/x/crypto/ssh"
 )
 
 type SSHKeyPair struct {
@@ -27,13 +27,13 @@ func GenerateSSHKeyPair() (*SSHKeyPair, error) {
 		Type:  "RSA PRIVATE KEY",
 		Bytes: x509.MarshalPKCS1PrivateKey(privateKey),
 	})
-	publicKey, err := ssh.NewPublicKey(&privateKey.PublicKey)
+	publicKey, err := gossh.NewPublicKey(&privateKey.PublicKey)
 	if err != nil {
 		return nil, err
 	}
 	return &SSHKeyPair{
 		PrivateKeyPEM: string(privateKeyPEM),
-		PublicKey:     string(ssh.MarshalAuthorizedKey(publicKey)),
+		PublicKey:     string(gossh.MarshalAuthorizedKey(publicKey)),
 	}, nil
 }
 
@@ -42,13 +42,11 @@ func validatePublicKey(pubKey string) error {
 	if key == "" {
 		return fmt.Errorf("cheia publică este goală")
 	}
-	_, _, _, _, err := ssh.ParseAuthorizedKey([]byte(key))
+	_, _, _, _, err := gossh.ParseAuthorizedKey([]byte(key))
 	return err
 }
 
 // wsConnWrapper — bridge WebSocket ↔ SSH.
-// Folosim BinaryMessage pentru date terminale (bytes arbitrari).
-// Frontend setează ws.binaryType = 'arraybuffer' și scrie Uint8Array.
 type wsConnWrapper struct{ *websocket.Conn }
 
 func (w *wsConnWrapper) Read(p []byte) (int, error) {
@@ -60,7 +58,6 @@ func (w *wsConnWrapper) Read(p []byte) (int, error) {
 }
 
 func (w *wsConnWrapper) Write(p []byte) (int, error) {
-	// BinaryMessage — browserul primește ArrayBuffer, convertit la Uint8Array → xterm.write()
 	if err := w.Conn.WriteMessage(websocket.BinaryMessage, p); err != nil {
 		return 0, err
 	}
@@ -70,20 +67,20 @@ func (w *wsConnWrapper) Write(p []byte) (int, error) {
 func StartSSHProxy(ws *websocket.Conn, sshAddress string, privateKeyPEM []byte) {
 	defer ws.Close()
 
-	signer, err := ssh.ParsePrivateKey(privateKeyPEM)
+	signer, err := gossh.ParsePrivateKey(privateKeyPEM)
 	if err != nil {
 		log.Printf("Eroare parsare MasterKey: %v", err)
 		ws.WriteMessage(websocket.TextMessage, []byte("\r\n[Eroare internă SSH]\r\n"))
 		return
 	}
 
-	config := &ssh.ClientConfig{
+	config := &gossh.ClientConfig{
 		User:            "player",
-		Auth:            []ssh.AuthMethod{ssh.PublicKeys(signer)},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		Auth:            []gossh.AuthMethod{gossh.PublicKeys(signer)},
+		HostKeyCallback: gossh.InsecureIgnoreHostKey(),
 	}
 
-	sshClient, err := ssh.Dial("tcp", sshAddress, config)
+	sshClient, err := gossh.Dial("tcp", sshAddress, config)
 	if err != nil {
 		ws.WriteMessage(websocket.TextMessage,
 			[]byte(fmt.Sprintf("\r\n[Eroare SSH: %v]\r\n", err)))
@@ -98,8 +95,8 @@ func StartSSHProxy(ws *websocket.Conn, sshAddress string, privateKeyPEM []byte) 
 	}
 	defer session.Close()
 
-	if err := session.RequestPty("xterm-256color", 40, 80, ssh.TerminalModes{
-		ssh.ECHO: 1, ssh.TTY_OP_ISPEED: 14400, ssh.TTY_OP_OSPEED: 14400,
+	if err := session.RequestPty("xterm-256color", 40, 80, gossh.TerminalModes{
+		gossh.ECHO: 1, gossh.TTY_OP_ISPEED: 14400, gossh.TTY_OP_OSPEED: 14400,
 	}); err != nil {
 		log.Printf("RequestPty error: %v", err)
 	}

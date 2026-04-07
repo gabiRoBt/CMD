@@ -50,9 +50,14 @@
     letter-spacing:.1em; margin-bottom:.35rem;
 }
 .field input[type="text"], .field input[type="password"] {
-    width:100%; background:#000; border:1px solid var(--border);
+    width:100%; background:var(--bg); border:1px solid var(--border);
     color:var(--green); font-family:'Share Tech Mono', monospace;
-    font-size:.82rem; padding:.45rem .65rem; outline:none; transition:border-color .2s;
+    font-size:.82rem; padding:.45rem .65rem; outline:none; transition:border-color .2s, box-shadow .2s;
+}
+.field input::placeholder { color:var(--text-dim); opacity:1; }
+.field input:focus {
+    border-color:var(--green-dim);
+    box-shadow:0 0 12px var(--green-dark), inset 0 0 4px var(--green-dark);
 }
 
 /* ── BUTTONS ── */

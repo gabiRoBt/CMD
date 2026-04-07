@@ -23,12 +23,12 @@ export function Notification({ show, msg }) {
 
 // ── GameOverOverlay ───────────────────────────────────────────────────────────
 
-export function GameOverOverlay({ info, t, onReturn }) {
+export function GameOverOverlay({ info, t, onReturn, redirectSecs }) {
   if (!info) return null;
 
   const titleClass = info.draw ? 'draw' : info.won ? 'won' : 'lost';
-  const title      = info.draw ? t.drawTitle : info.won ? t.winTitle  : t.loseTitle;
-  const sub        = info.draw ? t.subDraw   : info.won ? t.subWin    : t.subLose;
+  const title = info.draw ? t.drawTitle : info.won ? t.winTitle : t.loseTitle;
+  const sub = info.draw ? t.subDraw : info.won ? t.subWin : t.subLose;
 
   return (
     <div id="winner-overlay" className="show" style={{ display: 'flex' }}>
@@ -39,7 +39,7 @@ export function GameOverOverlay({ info, t, onReturn }) {
         style={{ width: 'auto', padding: '.6rem 2rem' }}
         onClick={onReturn}
       >
-        {t.btnRestart}
+        {t.btnRestart} ({redirectSecs}s)
       </button>
     </div>
   );

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import 'xterm/css/xterm.css';
 
 import { useNotification }   from '../hooks/useNotification';
@@ -19,6 +19,7 @@ export default function Arena({
   onReturnToLobby,
 }) {
   const [gameOverInfo, setGameOverInfo] = useState(null);
+  const [redirectSecs, setRedirectSecs] = useState(null);
 
   const arenaRef      = useRef(null);
   const canvasRef     = useRef(null);
@@ -61,14 +62,33 @@ export default function Arena({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [incomingAbility?.id]);
 
-  const handleReturn = () => { setGameOverInfo(null); onReturnToLobby?.(); };
+  const handleReturn = useCallback(() => {
+    setGameOverInfo(null);
+    setRedirectSecs(null);
+    if (onReturnToLobby) onReturnToLobby();
+  }, [onReturnToLobby]);
+
+  useEffect(() => {
+    if (!gameOverInfo) return;
+    setRedirectSecs(15);
+    const interval = setInterval(() => {
+      setRedirectSecs(s => {
+        if (s <= 1) {
+          handleReturn();
+          return 0;
+        }
+        return s - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [gameOverInfo, handleReturn]);
 
   return (
     <div className="arena-wrapper">
       <ArenaScene skin={skin} ref={{ arenaRef, canvasRef }}>
-        <PhaseBar playerID={playerID} phase={phase} t={t}/>
+        {!gameOverInfo && <PhaseBar playerID={playerID} phase={phase} t={t}/>}
         <Notification show={notif.show} msg={notif.msg}/>
-        <GameOverOverlay info={gameOverInfo} t={t} onReturn={handleReturn}/>
+        <GameOverOverlay info={gameOverInfo} redirectSecs={redirectSecs} t={t} onReturn={handleReturn}/>
       </ArenaScene>
 
       {/* Animated dashed arc: terminal ↔ antenna */}
@@ -89,16 +109,18 @@ export default function Arena({
         hidden={!!gameOverInfo}
       />
 
-      <ArenaFooter
-        arenaID={arenaID}
-        role={role}
-        phase={phase}
-        abilities={abilities}
-        usedAbilities={usedAbilities}
-        lang={lang}
-        t={t}
-        onUseAbility={triggerAbility}
-      />
+      {!gameOverInfo && (
+        <ArenaFooter
+          arenaID={arenaID}
+          role={role}
+          phase={phase}
+          abilities={abilities}
+          usedAbilities={usedAbilities}
+          lang={lang}
+          t={t}
+          onUseAbility={triggerAbility}
+        />
+      )}
     </div>
   );
 }

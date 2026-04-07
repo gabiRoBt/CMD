@@ -1,6 +1,9 @@
-package arena
+package api
 
 import (
+	"CMD/arena/manager"
+	"CMD/arena/ssh"
+	"CMD/arena/ws"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -20,18 +23,18 @@ var upgrader = websocket.Upgrader{
 
 // Server wires the HTTP layer to the Manager and Hub.
 type Server struct {
-	manager  *Manager
-	hub      *Hub
+	manager  *manager.Manager
+	hub      *ws.Hub
 	db       *pgxpool.Pool
 	serverIP string
 }
 
-func NewServer(manager *Manager, hub *Hub, db *pgxpool.Pool) *Server {
+func NewServer(mgr *manager.Manager, hub *ws.Hub, db *pgxpool.Pool) *Server {
 	ip := os.Getenv("SERVER_IP")
 	if ip == "" {
 		ip = "127.0.0.1"
 	}
-	return &Server{manager: manager, hub: hub, db: db, serverIP: ip}
+	return &Server{manager: mgr, hub: hub, db: db, serverIP: ip}
 }
 
 func (s *Server) Start(port int) error {
@@ -46,8 +49,6 @@ func (s *Server) Start(port int) error {
 	mux.HandleFunc("/api/leaderboard", handleLeaderboard(s.db))
 
 	mux.HandleFunc("/api/arenas", s.handleArenas)
-	// We want to pass auth down if possible, but for now we expect the client to wrap it or
-	// we handle the token manually. Let's wrap create/join with requireAuth so we have UserID.
 	mux.HandleFunc("/api/arena/create", requireAuth(s.db, s.handleCreateArenaAuth))
 	mux.HandleFunc("/api/arena/join", requireAuth(s.db, s.handleJoinArenaAuth))
 	mux.HandleFunc("/api/arena/my_status", requireAuth(s.db, s.handleMyArenaStatusAuth))
@@ -74,11 +75,11 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
-	client := &Client{conn: conn, send: make(chan []byte, 64), playerID: playerID}
-	s.hub.register <- client
+	client := ws.NewClient(conn, playerID)
+	s.hub.Register <- client
 	go func() {
 		time.Sleep(100 * time.Millisecond)
-		s.hub.SendToPlayer(playerID, WSEvent{Type: EventArenaList, Payload: s.manager.ListArenas()})
+		s.hub.SendToPlayer(playerID, ws.WSEvent{Type: ws.EventArenaList, Payload: s.manager.ListArenas()})
 	}()
 	go client.WritePump()
 	client.ReadPump(s.hub, nil)
@@ -93,7 +94,7 @@ func (s *Server) handleWSTerminal(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "missing params", 400)
 		return
 	}
-	a, ok := s.manager.arenas[arenaID]
+	a, ok := s.manager.GetArena(arenaID)
 	if !ok {
 		http.Error(w, "arena not found", 404)
 		return
@@ -101,13 +102,13 @@ func (s *Server) handleWSTerminal(w http.ResponseWriter, r *http.Request) {
 
 	var targetPort int
 	switch a.Phase {
-	case PhaseSetup:
+	case manager.PhaseSetup:
 		if playerID == a.Host.ID {
 			targetPort = a.Host.SSHPort
 		} else {
 			targetPort = a.Guest.SSHPort
 		}
-	case PhaseInfiltrate:
+	case manager.PhaseInfiltrate:
 		if playerID == a.Host.ID {
 			targetPort = a.Guest.SSHPort
 		} else {
@@ -125,7 +126,7 @@ func (s *Server) handleWSTerminal(w http.ResponseWriter, r *http.Request) {
 	targetAddr := fmt.Sprintf("%s:%d", s.serverIP, targetPort)
 	masterPrivKey := []byte(s.manager.MasterKeys.PrivateKeyPEM)
 	log.Printf("[Terminal] %s → %s", playerID, targetAddr)
-	StartSSHProxy(conn, targetAddr, masterPrivKey)
+	ssh.StartSSHProxy(conn, targetAddr, masterPrivKey)
 }
 
 // ── Static ────────────────────────────────────────────────────────────────────
@@ -141,7 +142,7 @@ func (s *Server) sshCmd(port int) string {
 }
 
 func (s *Server) broadcastArenaList() {
-	s.hub.Broadcast(WSEvent{Type: EventArenaList, Payload: s.manager.ListArenas()})
+	s.hub.Broadcast(ws.WSEvent{Type: ws.EventArenaList, Payload: s.manager.ListArenas()})
 }
 
 func writeJSON(w http.ResponseWriter, v interface{}) {

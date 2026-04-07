@@ -1,10 +1,12 @@
-package arena
+package manager
 
 import (
+	"CMD/arena/ssh"
 	"context"
 	"fmt"
 	"log"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/docker/docker/api/types"
@@ -26,23 +28,25 @@ const (
 
 // Manager owns all running arenas and the Docker client.
 type Manager struct {
+	mu         sync.RWMutex
 	docker     *client.Client
-	db         *pgxpool.Pool
+	dbPool     *pgxpool.Pool
 	arenas     map[string]*Arena
-	MasterKeys *SSHKeyPair
+	MasterKeys *ssh.SSHKeyPair
 }
 
-func NewManager(db *pgxpool.Pool) (*Manager, error) {
+func NewManager(dbPool *pgxpool.Pool) (*Manager, error) {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return nil, fmt.Errorf("cannot connect to Docker: %w", err)
 	}
-	masterKeys, err := GenerateSSHKeyPair()
+	masterKeys, err := ssh.GenerateSSHKeyPair()
 	if err != nil {
 		return nil, fmt.Errorf("MasterKey generation error: %w", err)
 	}
 	m := &Manager{
 		docker:     cli,
+		dbPool:     dbPool,
 		arenas:     make(map[string]*Arena),
 		MasterKeys: masterKeys,
 	}
@@ -191,11 +195,10 @@ func (m *Manager) cleanup(a *Arena) {
 	if a.Guest != nil && a.Guest.ContainerID != "" {
 		m.stopContainer(a.Guest.ContainerID)
 	}
-	delete(m.arenas, a.ID)
 }
 
 func waitForSSH(host string, port int, timeout time.Duration) error {
-	addr := fmt.Sprintf("%s:%d", host, port)
+	addr := net.JoinHostPort(host, fmt.Sprintf("%d", port))
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
 		conn, err := net.DialTimeout("tcp", addr, 1*time.Second)

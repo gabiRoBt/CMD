@@ -1,6 +1,7 @@
-package arena
+package api
 
 import (
+	"CMD/arena/auth"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -14,14 +15,14 @@ import (
 
 // requireAuth extracts and validates the Bearer JWT.
 // On success it calls next; on failure it returns 401.
-func requireAuth(db *pgxpool.Pool, next func(w http.ResponseWriter, r *http.Request, c *Claims)) http.HandlerFunc {
+func requireAuth(db *pgxpool.Pool, next func(w http.ResponseWriter, r *http.Request, c *auth.Claims)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		h := r.Header.Get("Authorization")
 		if !strings.HasPrefix(h, "Bearer ") {
 			http.Error(w, "missing token", 401)
 			return
 		}
-		c, err := ValidateJWT(strings.TrimPrefix(h, "Bearer "))
+		c, err := auth.ValidateJWT(strings.TrimPrefix(h, "Bearer "))
 		if err != nil {
 			http.Error(w, "invalid token", 401)
 			return
@@ -52,7 +53,7 @@ func handleRegister(db *pgxpool.Pool) http.HandlerFunc {
 			return
 		}
 
-		hash, err := HashPassword(req.Password)
+		hash, err := auth.HashPassword(req.Password)
 		if err != nil {
 			http.Error(w, "server error", 500)
 			return
@@ -72,7 +73,7 @@ func handleRegister(db *pgxpool.Pool) http.HandlerFunc {
 			return
 		}
 
-		tok, _ := GenerateJWT(userID, req.Username, false)
+		tok, _ := auth.GenerateJWT(userID, req.Username, false)
 		writeJSON(w, map[string]interface{}{"token": tok, "username": req.Username, "elo": 1000, "is_guest": false})
 	}
 }
@@ -111,12 +112,12 @@ func handleLogin(db *pgxpool.Pool) http.HandlerFunc {
 			http.Error(w, "use guest login for guest accounts", 400)
 			return
 		}
-		if !CheckPassword(hash, req.Password) {
+		if !auth.CheckPassword(hash, req.Password) {
 			http.Error(w, "invalid credentials", 401)
 			return
 		}
 
-		tok, _ := GenerateJWT(userID, req.Username, false)
+		tok, _ := auth.GenerateJWT(userID, req.Username, false)
 		writeJSON(w, map[string]interface{}{"token": tok, "username": req.Username, "elo": elo, "is_guest": false})
 	}
 }
@@ -164,7 +165,7 @@ func handleGuest(db *pgxpool.Pool) http.HandlerFunc {
 			).Scan(&userID)
 		}
 
-		tok, _ := GenerateJWT(userID, username, true)
+		tok, _ := auth.GenerateJWT(userID, username, true)
 		writeJSON(w, map[string]interface{}{"token": tok, "username": username, "elo": 0, "is_guest": true})
 	}
 }
@@ -177,7 +178,7 @@ func handleMe(db *pgxpool.Pool) http.HandlerFunc {
 			http.Error(w, "missing token", 401)
 			return
 		}
-		c, err := ValidateJWT(strings.TrimPrefix(h, "Bearer "))
+		c, err := auth.ValidateJWT(strings.TrimPrefix(h, "Bearer "))
 		if err != nil {
 			http.Error(w, "invalid token", 401)
 			return
@@ -199,7 +200,7 @@ func handleMe(db *pgxpool.Pool) http.HandlerFunc {
 
 // PATCH /api/auth/username  { new_username }  (auth required)
 func handleChangeUsername(db *pgxpool.Pool) http.HandlerFunc {
-	return requireAuth(db, func(w http.ResponseWriter, r *http.Request, c *Claims) {
+	return requireAuth(db, func(w http.ResponseWriter, r *http.Request, c *auth.Claims) {
 		if r.Method != http.MethodPatch {
 			http.Error(w, "method not allowed", 405)
 			return
@@ -233,7 +234,7 @@ func handleChangeUsername(db *pgxpool.Pool) http.HandlerFunc {
 			return
 		}
 
-		newTok, _ := GenerateJWT(c.UserID, req.NewUsername, false)
+		newTok, _ := auth.GenerateJWT(c.UserID, req.NewUsername, false)
 		writeJSON(w, map[string]interface{}{"token": newTok, "username": req.NewUsername})
 	})
 }

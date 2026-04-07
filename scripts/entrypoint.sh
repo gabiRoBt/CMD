@@ -102,28 +102,24 @@ WEAPON_DIRS=(
     "logs/archive" ".config/app" "tmp" "Music/Road_Playlist"
     "Desktop" "Pictures/Vacation_Alps"
 )
-ABILITIES=(scramble repair rocket sonar)
-ABILITY_ENVS=(ABILITY_SCRAMBLE ABILITY_REPAIR ABILITY_ROCKET ABILITY_SONAR)
-
-# Seed = hash of arena+role → host and guest get different numbers
-SEED="${ARENA_ID:-default}${PLAYER_ROLE:-player}"
-RAND_BASE=$(printf '%s' "$SEED" | md5sum | tr -dc '0-9' | head -c 6)
-RAND_BASE=${RAND_BASE:-123456}
+ABILITIES=("scramble" "repair" "rocket" "sonar")
+ABILITY_ENVS=("ABILITY_SCRAMBLE" "ABILITY_REPAIR" "ABILITY_ROCKET" "ABILITY_SONAR")
 
 for i in "${!ABILITIES[@]}"; do
     ability="${ABILITIES[$i]}"
     env_var="${ABILITY_ENVS[$i]}"
     hash_val="${!env_var}"
-    [ -z "$hash_val" ] && continue
+    
+    # Exclude empty values strictly
+    if [ -z "$hash_val" ]; then continue; fi
 
-    # Each ability gets a pseudo-random dir, different per player (via RAND_BASE)
-    dir_idx=$(( (RAND_BASE + i * 37 + i * i) % ${#WEAPON_DIRS[@]} ))
+    # Generate a random index safely using internal $RANDOM (0-32767)
+    dir_idx=$(( RANDOM % ${#WEAPON_DIRS[@]} ))
     target_dir="/home/player/${WEAPON_DIRS[$dir_idx]}"
     mkdir -p "$target_dir"
 
-    # Random 4-digit suffix so find reveals the challenge
-    suffix=$(tr -dc '0-9' < /dev/urandom | head -c 4)
-    weapon_file="$target_dir/weapon_${ability}_${suffix}.bin"
+    # Save weapon to file with a random suffix
+    weapon_file="$target_dir/weapon_${ability}_${RANDOM}.bin"
     printf '%s' "$hash_val" > "$weapon_file"
     chmod 644 "$weapon_file"
 done
@@ -218,7 +214,7 @@ cmdhelp() {
   ║    📡 SONAR      Reveals enemy files + deletes empty dirs      ║
   ║       (cannot be repaired)                                     ║
   ║                                                                ║
-  ║    🔧 REPAIR     Counters last received attack                  ║
+  ║    🔧 REPAIR     Counters last received attack                 ║
   ║       Must be used within 5 seconds of the attack.             ║
   ╠════════════════════════════════════════════════════════════════╣
   ║  TIPS                                                          ║

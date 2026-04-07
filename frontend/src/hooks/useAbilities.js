@@ -37,17 +37,16 @@ export function useAbilities({ arenaID, playerID, phase, lang, fireAnimation, sh
     showNotif(ABILITY_EFFECTS[name]?.[lang] ?? ABILITY_EFFECTS[name]?.en ?? name.toUpperCase());
 
     try {
-      const res = await api.useAbility(arenaID, playerID, name);
+      await api.useAbility(arenaID, playerID, name);
       if (isRepair) {
-        if (res.ok) {
-          markUsed(name);
-        } else {
-          const text = await res.text();
-          showNotif(`REPAIR: ${text.trim() || 'window expired'}`);
-        }
+        markUsed(name);
       }
     } catch (err) {
-      console.error('[ability]', err);
+      if (isRepair) {
+        showNotif(`REPAIR: ${err.message || 'window expired'}`);
+      } else {
+        console.error('[ability]', err);
+      }
     }
   }, [phase, usedAbilities, arenaID, playerID, lang, fireAnimation, showNotif, markUsed]);
 

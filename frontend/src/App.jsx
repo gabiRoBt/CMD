@@ -21,10 +21,11 @@ export default function App() {
   const [user,      setUser]      = useState(null); // {username, elo, isGuest}
   const playerID = user?.username;
 
-  // ── Lobby state ──────────────────────────────────────────────────────────
+  // ── Arena state ──────────────────────────────────────────────────────────
   const [arenaList, setArenaList] = useState([]);
   const [arenaID,   setArenaID]   = useState(null);
   const [role,      setRole]      = useState(null);
+  const [initialGameState, setInitialGameState] = useState(null);
 
   // ── View ─────────────────────────────────────────────────────────────────
   const [view, setView] = useState('auth'); // 'auth' | 'lobby' | 'arena'
@@ -41,12 +42,17 @@ export default function App() {
   // ── Game state driven by WS events ──────────────────────────────────────
   const { phase, abilities, incomingAbility, playerIDRef, handleWSEvent } = useGameState({
     startCountdown,
+    stopCountdown,
     onGameStart,
+    initialState: initialGameState
   });
 
-  // Extend WS handler to also update lobby arena list
+  // Extend WS handler to also update lobby arena list and player profile after game
   const onWSEvent = useCallback((ev) => {
     if (ev.type === 'arena_list') setArenaList(ev.payload ?? []);
+    if (ev.type === 'game_over') {
+      api.me().then(u => setUser(u)).catch(console.error);
+    }
     handleWSEvent(ev);
   }, [handleWSEvent]);
 
@@ -58,30 +64,46 @@ export default function App() {
       try {
         const u = await api.me();
         if (u && u.username) {
-          // Inainte sa facem login success direct in lobby, verificam daca sunt intr-un meci
+           setUser({ username: u.username, isGuest: u.is_guest, elo: u.elo || 0 });
+           playerIDRef.current = u.username;
+
+          // Checking if we are in a match
           try {
             const status = await api.myArenaStatus();
             if (status && status.in_arena) {
-               // Reseteaza conexiunea si trimit direct in arena
-               setUser({ username: u.username, isGuest: u.is_guest, elo: u.elo || 0 });
-               playerIDRef.current = u.username;
                connectWS(u.username);
                setArenaID(status.arena_id);
                setRole(status.role);
-               setView('arena');
+               
+               if (status.phase === 'waiting' || status.phase === 'starting') {
+                 // Remain in lobby panel
+                 setView('lobby');
+               } else if (status.phase === 'setup' || status.phase === 'infiltrate') {
+                 // Jump into ongoing arena
+                 setInitialGameState({
+                   phase: status.phase, 
+                   time_left: status.time_left, 
+                   abilities: status.abilities || []
+                 });
+                 setView('arena');
+               } else {
+                 setView('lobby');
+               }
                return; // Exit
             }
           } catch(err) {
-             // Daca esueaza verificare, continuam standard in lobby
+             console.error("Check status failed", err);
           }
 
-          handleLoginSuccess({ username: u.username, isGuest: u.is_guest, elo: u.elo || 0 });
+          // Normal login flow
+          connectWS(u.username);
+          setView('lobby');
         }
       } catch (e) {
         setView('auth');
       }
     };
-    if (localStorage.getItem('cmd_token')) {
+    if (sessionStorage.getItem('cmd_token')) {
       initAuth();
     } else {
       setView('auth');
@@ -107,7 +129,7 @@ export default function App() {
   }, [connectWS, playerIDRef]);
 
   const handleLogout = useCallback(() => {
-    localStorage.removeItem('cmd_token');
+    sessionStorage.removeItem('cmd_token');
     setUser(null);
     stopCountdown();
     setView('auth');

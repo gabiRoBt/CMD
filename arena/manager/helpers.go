@@ -1,4 +1,4 @@
-package arena
+package manager
 
 import (
 	cryptorand "crypto/rand"

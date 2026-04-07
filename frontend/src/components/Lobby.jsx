@@ -15,6 +15,7 @@ export default function Lobby({ t, user, arenaID, arenaList, onUpdateArena, onLe
           currentArena={currentArena}
           onUpdateArena={onUpdateArena} 
           onLeaveArena={onLeaveArena}
+          arenaList={arenaList}
         />
       </div>
 
