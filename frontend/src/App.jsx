@@ -9,6 +9,7 @@ import { AppHeader } from './components/shared/AppHeader';
 import { Auth }      from './components/Auth';
 import Lobby         from './components/Lobby';
 import Arena         from './components/Arena';
+import { NukeCountdown } from './components/NukeCountdown';
 import { api }       from './api';
 
 export default function App() {
@@ -28,15 +29,37 @@ export default function App() {
   const [initialGameState, setInitialGameState] = useState(null);
 
   // ── View ─────────────────────────────────────────────────────────────────
-  const [view, setView] = useState('auth'); // 'auth' | 'lobby' | 'arena'
+  const [view, setView] = useState('auth'); // 'auth' | 'lobby' | 'arena' | 'countdown'
+  const [showFadeIn, setShowFadeIn] = useState(false);
 
   const { seconds: countdown, start: startCountdown, stop: stopCountdown } = useCountdown();
 
-  // Called when game_start arrives — transitions to arena view
+  // ── Side Effects ─────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (view === 'arena' && document.visibilityState !== 'hidden') {
+      setShowFadeIn(true);
+      const t = setTimeout(() => setShowFadeIn(false), 650); // 0.6s fade + 0.05s buffer
+      return () => clearTimeout(t);
+    } else if (view !== 'arena') {
+      setShowFadeIn(false);
+    }
+  }, [view]);
+
+  useEffect(() => {
+    if (view === 'lobby') {
+      document.title = "CMD : : LOBBY";
+    } else if (view === 'arena' || view === 'countdown') {
+      document.title = "CMD : : ARENA";
+    } else {
+      document.title = "CMD : : NET";
+    }
+  }, [view]);
+
+  // Called when game_start arrives — transitions to countdown view
   const onGameStart = useCallback((payload) => {
     setArenaID(payload.arena_id);
     setRole(payload.role);
-    setView('arena');
+    setView('countdown');
   }, []);
 
   // ── Game state driven by WS events ──────────────────────────────────────
@@ -172,6 +195,8 @@ export default function App() {
           onUpdateArena={(id, r) => { setArenaID(id); setRole(r); }}
           onLeaveArena={() => { setArenaID(null); setRole(null); }}
         />
+      ) : view === 'countdown' ? (
+        <NukeCountdown onFinish={() => setView('arena')} t={t} />
       ) : (
         <Arena
           t={t}
@@ -185,6 +210,19 @@ export default function App() {
           incomingAbility={incomingAbility}
           onReturnToLobby={returnToLobby}
         />
+      )}
+
+      <style>{`
+        @keyframes fade-in-from-black {
+          0% { opacity: 1; pointer-events: none; }
+          100% { opacity: 0; pointer-events: none; }
+        }
+      `}</style>
+      {showFadeIn && (
+        <div style={{
+          position: 'fixed', inset: 0, background: '#000', zIndex: 99999,
+          animation: 'fade-in-from-black 0.6s ease-out forwards', pointerEvents: 'none'
+        }} />
       )}
     </>
   );

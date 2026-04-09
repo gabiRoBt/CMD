@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -14,7 +15,12 @@ import (
 func InitDB(ctx context.Context) (*pgxpool.Pool, error) {
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {
-		dsn = "postgres://postgres:postgres@localhost:5432/cmd_arena"
+		return nil, fmt.Errorf("DATABASE_URL environment variable is required")
+	}
+
+	err := createDatabaseIfNotExists(ctx, dsn)
+	if err != nil {
+		log.Printf("[InitDB] Could not ensure db exists: %v", err)
 	}
 
 	pool, err := pgxpool.New(ctx, dsn)
@@ -32,6 +38,45 @@ func InitDB(ctx context.Context) (*pgxpool.Pool, error) {
 
 	log.Println("✓ PostgreSQL connected")
 	return pool, nil
+}
+
+func createDatabaseIfNotExists(ctx context.Context, dsn string) error {
+	// Simple DSN parsing to extract dbname and connect to "postgres"
+	// Example DSN: postgres://user:pass@localhost:5432/dbname
+	lastSlash := strings.LastIndex(dsn, "/")
+	if lastSlash == -1 {
+		return fmt.Errorf("invalid DSN format")
+	}
+	baseDsn := dsn[:lastSlash] + "/postgres"
+
+	// Try parsing query params e.g. ?sslmode=disable
+	dbNameAndParams := dsn[lastSlash+1:]
+	dbName := dbNameAndParams
+	if questionParams := strings.Index(dbNameAndParams, "?"); questionParams != -1 {
+		dbName = dbNameAndParams[:questionParams]
+		baseDsn += dbNameAndParams[questionParams:]
+	}
+
+	pool, err := pgxpool.New(ctx, baseDsn)
+	if err != nil {
+		return err
+	}
+	defer pool.Close()
+
+	var exists bool
+	err = pool.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM pg_database WHERE datname = $1)", dbName).Scan(&exists)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		log.Printf("Baza de date %s nu exista. O cream...", dbName)
+		_, err = pool.Exec(ctx, fmt.Sprintf("CREATE DATABASE %s", dbName))
+		if err != nil {
+			return err
+		}
+		log.Printf("Baza de date %s a fost creata cu succes.", dbName)
+	}
+	return nil
 }
 
 func migrate(ctx context.Context, db *pgxpool.Pool) error {

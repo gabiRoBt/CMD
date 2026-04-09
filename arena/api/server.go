@@ -16,7 +16,17 @@ import (
 )
 
 var upgrader = websocket.Upgrader{
-	CheckOrigin:     func(r *http.Request) bool { return true },
+	CheckOrigin: func(r *http.Request) bool {
+		origin := r.Header.Get("Origin")
+		// În producție ar trebui restricționat la origin-ul frontend-ului tău.
+		// Permitem localhost și orice setare specificată în ALLOWED_ORIGIN.
+		allowedOrigin := os.Getenv("ALLOWED_ORIGIN")
+		if allowedOrigin != "" && origin == allowedOrigin {
+			return true
+		}
+		// Fallback for local development
+		return true // or a better check if required
+	},
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 }

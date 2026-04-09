@@ -62,13 +62,15 @@ type Arena struct {
 }
 
 type ArenaView struct {
-	ID       string `json:"id"`
-	Name     string `json:"name"`
-	Type     string `json:"type"`
-	Phase    string `json:"phase"`
-	HostID   string `json:"host_id"`
-	GuestID  string `json:"guest_id,omitempty"`
-	HasGuest bool   `json:"has_guest"`
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	Type       string `json:"type"`
+	Phase      string `json:"phase"`
+	HostID     string `json:"host_id"`
+	GuestID    string `json:"guest_id,omitempty"`
+	HasGuest   bool   `json:"has_guest"`
+	HostReady  bool   `json:"host_ready"`
+	GuestReady bool   `json:"guest_ready"`
 }
 
 func NewArena(arenaID, hostPlayerID, name, arenaType string) *Arena {

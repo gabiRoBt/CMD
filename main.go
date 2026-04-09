@@ -7,11 +7,14 @@ import (
 	"CMD/arena/ws"
 	"context"
 	"fmt"
+	"github.com/joho/godotenv"
 	"log"
 	"os"
 )
 
 func main() {
+	_ = godotenv.Load() // Incarca .env daca exista
+
 	log.SetFlags(log.Ltime | log.Lshortfile)
 	fmt.Println("=== CMD Arena Server ===")
 

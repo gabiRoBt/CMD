@@ -18,15 +18,17 @@ func (m *Manager) ListArenas() []ArenaView {
 			continue // Hide finished arenas from the lobby
 		}
 		view := ArenaView{
-			ID:       a.ID,
-			Name:     a.Name,
-			Type:     a.Type,
-			Phase:    string(a.Phase),
-			HostID:   a.Host.ID,
-			HasGuest: a.Guest != nil,
+			ID:        a.ID,
+			Name:      a.Name,
+			Type:      a.Type,
+			Phase:     string(a.Phase),
+			HostID:    a.Host.ID,
+			HasGuest:  a.Guest != nil,
+			HostReady: a.Host.Ready,
 		}
 		if a.Guest != nil {
 			view.GuestID = a.Guest.ID
+			view.GuestReady = a.Guest.Ready
 		}
 		views = append(views, view)
 	}
@@ -53,14 +55,18 @@ func (m *Manager) CreateArena(hostPlayerID, name, arenaType string, hostUserID i
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
+	// Cancel old waiting lobbies for THIS player first before checking names
+	m.cancelPlayerLobbiesLocked(hostPlayerID)
+
 	// Unicitate: nu permitem două arene active cu același nume (case-insensitive)
 	lower := strings.ToLower(name)
 	for _, a := range m.arenas {
-		if strings.ToLower(a.Name) == lower {
+		if a.Phase != PhaseFinished && strings.ToLower(a.Name) == lower {
 			return nil, fmt.Errorf("arena name already taken")
 		}
 	}
-	m.cancelPlayerLobbiesLocked(hostPlayerID)
+
 	arenaID := generateID("arena")
 	a := NewArena(arenaID, hostPlayerID, name, arenaType)
 	a.HostUserID = hostUserID

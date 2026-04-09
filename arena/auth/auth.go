@@ -2,6 +2,7 @@ package auth
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"time"
 
@@ -32,7 +33,7 @@ type Claims struct {
 func jwtSecret() []byte {
 	s := os.Getenv("JWT_SECRET")
 	if s == "" {
-		s = "cmd-arena-secret-change-me"
+		log.Fatal("JWT_SECRET environment variable is required")
 	}
 	return []byte(s)
 }

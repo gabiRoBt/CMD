@@ -133,7 +133,7 @@ func (m *Manager) spawnContainer(arenaID, role string, tokens AbilityTokens) (in
 		},
 		&container.HostConfig{
 			PortBindings: nat.PortMap{
-				"22/tcp": []nat.PortBinding{{HostIP: "0.0.0.0", HostPort: "0"}},
+				"22/tcp": []nat.PortBinding{{HostIP: "127.0.0.1", HostPort: "0"}},
 			},
 			AutoRemove:  false,
 			NetworkMode: "bridge",

@@ -80,9 +80,13 @@ export function ArenaListPanel({ t, user, arenaID, arenaList, onUpdateArena }) {
                   </div>
                   <div className="arena-players">
                     HOST: <span style={{ color: 'var(--green)' }}>{a.host_id || 'n/a'}</span>
+                    {a.host_ready === true && <span style={{ color: 'var(--green)', marginLeft: 4, fontSize: '0.65rem' }}>✓</span>}
                     {' '}· GUEST:{' '}
                     {a.has_guest ? (
-                      <span style={{ color: 'var(--amber)' }}>{a.guest_id || '?'}</span>
+                      <span style={{ color: 'var(--amber)' }}>
+                        {a.guest_id || '?'}
+                        {a.guest_ready === true && <span style={{ color: 'var(--green)', marginLeft: 4, fontSize: '0.65rem' }}>✓</span>}
+                      </span>
                     ) : (
                       <span style={{ color: 'var(--text-dim)', fontStyle: 'italic' }}>waiting...</span>
                     )}

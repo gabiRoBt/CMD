@@ -9,15 +9,6 @@
     border-radius:4px;
 }
 
-/* CRT scanlines inside terminal */
-#terminal-win::after {
-    content:''; position:absolute; inset:0; pointer-events:none; z-index:9999;
-    background:repeating-linear-gradient(
-        0deg, transparent, transparent 2px,
-        rgba(0,0,0,0.22) 2px, rgba(0,0,0,0.22) 4px
-    );
-    border-radius:4px;
-}
 
 /* ── BUBBLE TAILS ── */
 .term-bubble-tail-left {

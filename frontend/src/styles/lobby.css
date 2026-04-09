@@ -22,14 +22,13 @@
 
 /* ── PANEL ── */
 .top-panel {
-    height: 390px;
     display: flex;
     flex-direction: column;
 }
 .scrollable-list {
     flex: 1;
-    overflow-y: auto;
     min-height: 0;
+    overflow-y: auto;
     margin-bottom: .8rem;
     padding-right: .5rem;
 }
@@ -104,11 +103,14 @@
 }
 
 /* ── ARENA LIST ── */
-.arena-list { min-height:60px; }
+.arena-list { min-height:60px; display: flex; flex-direction: column; gap: 0.4rem; padding-bottom: 0.4rem; }
 .arena-item {
-    border:1px solid var(--border); padding:.7rem 1rem; margin-bottom:.4rem;
+    border:1px solid var(--border); padding:.7rem 1rem;
     display:flex; align-items:center; justify-content:space-between;
     cursor:pointer; transition:all .15s;
+    height: 65px;
+    box-sizing: border-box;
+    flex-shrink: 0;
 }
 .arena-item:hover    { border-color:var(--green-dim); background:rgba(0,255,65,.02); }
 .arena-item.selected { border-color:var(--green);     background:rgba(0,255,65,.05); }
@@ -117,4 +119,9 @@
 .empty-list {
     color:var(--text-dim); font-size:.72rem; text-align:center;
     padding:1.5rem 0; border:1px dashed var(--border);
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
 }
