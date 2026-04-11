@@ -1,4 +1,4 @@
-const getToken = () => sessionStorage.getItem('cmd_token');
+const getToken = () => localStorage.getItem('cmd_token');
 
 const authHeader = () => {
   const t = getToken();
@@ -15,7 +15,7 @@ const checkResponse = async (res) => {
   const body = await parseBody(res);
   if (!res.ok) {
     if (res.status === 401) {
-      sessionStorage.removeItem('cmd_token');
+      localStorage.removeItem('cmd_token');
       window.dispatchEvent(new Event('auth_expired'));
     }
     const msg = typeof body === 'string' ? body : (body?.message || res.statusText || 'Request failed');

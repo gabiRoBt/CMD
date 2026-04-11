@@ -33,15 +33,15 @@ export function ArenaListPanel({ t, user, arenaID, arenaList, onUpdateArena }) {
     && selectedArena.host_id !== user?.username;
 
   const joinDisabledReason = !selectedArena
-    ? 'Select an arena first'
+    ? (t.errSelectArena || 'Select an arena first')
     : arenaID
-    ? 'You are already in an arena'
+    ? (t.errAlreadyInArena || 'You are already in an arena')
     : selectedArena.host_id === user?.username
-    ? 'This is your arena'
+    ? (t.errYourArena || 'This is your arena')
     : selectedArena.has_guest
-    ? 'Arena is full'
+    ? (t.errArenaFull || 'Arena is full')
     : user?.isGuest && selectedArena.type === 'competitive'
-    ? 'Guests cannot join competitive matches'
+    ? (t.errGuestComp || 'Guests cannot join competitive matches')
     : '';
 
   return (
@@ -51,7 +51,7 @@ export function ArenaListPanel({ t, user, arenaID, arenaList, onUpdateArena }) {
       <div className="scrollable-list">
         {arenaList.length === 0 ? (
           <div className="empty-list">
-            {t.noArenas || 'No active arenas.'}
+            {t.emptyList || 'No active arenas.'}
           </div>
         ) : (
           <div className="arena-list">
@@ -69,26 +69,26 @@ export function ArenaListPanel({ t, user, arenaID, arenaList, onUpdateArena }) {
                       backgroundColor: a.type === 'competitive' ? 'var(--amber-dim)' : 'var(--green-dim)',
                       color: '#000', padding: '1px 4px', borderRadius: 2,
                       fontSize: '0.55rem', fontWeight: 'bold', textTransform: 'uppercase'
-                    }}>{a.type || 'casual'}</span>
+                    }}>{a.type === 'competitive' ? (t.lblComp? t.lblComp.split(' ')[0] : 'COMPETITIVE') : (t.lblCasual || 'CASUAL')}</span>
                     {a.has_guest && (
                       <span style={{
                         backgroundColor: 'rgba(200,50,50,0.2)', color: 'var(--red)',
                         border: '1px solid var(--red)', padding: '1px 4px', borderRadius: 2,
                         fontSize: '0.55rem', fontWeight: 'bold'
-                      }}>FULL</span>
+                      }}>{t.lblFull || 'FULL'}</span>
                     )}
                   </div>
                   <div className="arena-players">
-                    HOST: <span style={{ color: 'var(--green)' }}>{a.host_id || 'n/a'}</span>
-                    {a.host_ready === true && <span style={{ color: 'var(--green)', marginLeft: 4, fontSize: '0.65rem' }}>✓</span>}
-                    {' '}· GUEST:{' '}
+                    {t.hostText || 'HOST:'} <span style={{ color: 'var(--green)' }}>{a.host_id || 'n/a'}</span>
+                    {a.host_ready === true && <span style={{ color: 'var(--green)', marginLeft: 4, fontSize: '0.65rem' }}>v</span>}
+                    {' '} {t.guestText || 'GUEST:'}{' '}
                     {a.has_guest ? (
                       <span style={{ color: 'var(--amber)' }}>
                         {a.guest_id || '?'}
-                        {a.guest_ready === true && <span style={{ color: 'var(--green)', marginLeft: 4, fontSize: '0.65rem' }}>✓</span>}
+                        {a.guest_ready === true && <span style={{ color: 'var(--green)', marginLeft: 4, fontSize: '0.65rem' }}>v</span>}
                       </span>
                     ) : (
-                      <span style={{ color: 'var(--text-dim)', fontStyle: 'italic' }}>waiting...</span>
+                      <span style={{ color: 'var(--text-dim)', fontStyle: 'italic' }}>{t.waitText || 'waiting...'}</span>
                     )}
                   </div>
                 </div>
@@ -109,7 +109,7 @@ export function ArenaListPanel({ t, user, arenaID, arenaList, onUpdateArena }) {
           {loading ? '...' : (t.btnJoin || '[ JOIN ]')}
         </button>
         <button className="btn" style={{ width: 'auto', borderColor: 'var(--text-dim)', color: 'var(--text-dim)' }} onClick={refresh}>
-          {t.btnRefresh || '[ ↻ REFRESH ]'}
+          {t.btnRefresh || '[ R REFRESH ]'}
         </button>
       </div>
 

@@ -1,25 +1,43 @@
 import { useEffect, useState, useRef } from 'react';
+import { sounds } from '../utils/sounds';
 
 export function NukeCountdown({ onFinish, t }) {
   const [count, setCount] = useState(5);
   const endTimeRef = useRef(Date.now() + 5000);
 
   useEffect(() => {
+    // start continuous war-time alarm overlay
+    sounds.startAlarm();
+    // initially ping for t-5 right away since left starts on 5 and next interval might miss ping 5 start
+    sounds.countdownTick();
+
     const interval = setInterval(() => {
       const left = Math.ceil((endTimeRef.current - Date.now()) / 1000);
       if (left <= 0) {
-        setCount(0);
+        setCount(prev => {
+          if (prev > 0) sounds.countdownEnd();
+          return 0;
+        });
         clearInterval(interval);
       } else {
-        setCount(left);
+        setCount(prev => {
+          if (prev !== left && prev > left) sounds.countdownTick();
+          return left;
+        });
       }
     }, 100);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      sounds.stopAlarm();
+    };
   }, []);
 
   useEffect(() => {
     if (count === 0) {
-      const timer = setTimeout(onFinish, 600); // 0.6s fade to black
+      const timer = setTimeout(() => {
+        sounds.tvSwitch();
+        onFinish();
+      }, 600); // 0.6s fade to black
       return () => clearTimeout(timer);
     }
   }, [count, onFinish]);

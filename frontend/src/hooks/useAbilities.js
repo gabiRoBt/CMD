@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { api } from '../api';
 import { ABILITY_EFFECTS } from '../constants/abilities';
 import { PHASE } from '../constants/game';
+import { sounds } from '../utils/sounds';
 
 /**
  * Manages the player's ability usage within a match.
@@ -35,6 +36,7 @@ export function useAbilities({ arenaID, playerID, phase, lang, fireAnimation, sh
 
     fireAnimation(name, 'outgoing');
     showNotif(ABILITY_EFFECTS[name]?.[lang] ?? ABILITY_EFFECTS[name]?.en ?? name.toUpperCase());
+    sounds.abilityUse();
 
     try {
       await api.useAbility(arenaID, playerID, name);

@@ -10,6 +10,7 @@ import { Auth }      from './components/Auth';
 import Lobby         from './components/Lobby';
 import Arena         from './components/Arena';
 import { NukeCountdown } from './components/NukeCountdown';
+import { sounds, playBGM, fadeOutBGM } from './utils/sounds';
 import { api }       from './api';
 
 export default function App() {
@@ -31,6 +32,18 @@ export default function App() {
   // ── View ─────────────────────────────────────────────────────────────────
   const [view, setView] = useState('auth'); // 'auth' | 'lobby' | 'arena' | 'countdown'
   const [showFadeIn, setShowFadeIn] = useState(false);
+
+  // Change background music when view or skin changes
+  useEffect(() => {
+    if (view === 'auth' || view === 'lobby') {
+      playBGM('lobby');
+    } else if (view === 'arena') {
+      const skinId = skin.replace('skin-', '');
+      playBGM(skinId);
+    } else if (view === 'countdown') {
+      fadeOutBGM(2000); // 2 second fade out during nuke alarm
+    }
+  }, [view, skin]);
 
   const { seconds: countdown, start: startCountdown, stop: stopCountdown } = useCountdown();
 
@@ -126,7 +139,7 @@ export default function App() {
         setView('auth');
       }
     };
-    if (sessionStorage.getItem('cmd_token')) {
+    if (localStorage.getItem('cmd_token')) {
       initAuth();
     } else {
       setView('auth');
@@ -152,7 +165,7 @@ export default function App() {
   }, [connectWS, playerIDRef]);
 
   const handleLogout = useCallback(() => {
-    sessionStorage.removeItem('cmd_token');
+    localStorage.removeItem('cmd_token');
     setUser(null);
     stopCountdown();
     setView('auth');
@@ -182,6 +195,7 @@ export default function App() {
         onLangChange={setLang}
         onSkinChange={setSkin}
         onLogout={handleLogout}
+        t={t}
       />
 
       {view === 'auth' ? (

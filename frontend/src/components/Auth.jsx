@@ -33,7 +33,7 @@ export function Auth({
       }
 
       if (res && res.token) {
-        sessionStorage.setItem('cmd_token', res.token);
+        localStorage.setItem('cmd_token', res.token);
         onLoginSuccess({
           username: res.username,
           elo: res.elo,
@@ -49,42 +49,42 @@ export function Auth({
 
   return (
     <div className="panel" style={{ width: 380, margin: '40px auto' }}>
-      <span className="panel-label">{t.titleLobby || '// IDENTIFICATION'}</span>
+      <span className="panel-label">{t.titleAuth || '// IDENTIFICATION'}</span>
       <div>
         <div style={{ display: 'flex', borderBottom: '1px solid #336633', marginBottom: 15 }}>
-          <TabButton active={tab === 'login'} onClick={() => setTab('login')}>LOGIN</TabButton>
-          <TabButton active={tab === 'signup'} onClick={() => setTab('signup')}>SIGN UP</TabButton>
-          <TabButton active={tab === 'guest'} onClick={() => setTab('guest')}>GUEST</TabButton>
+          <TabButton active={tab === 'login'} onClick={() => setTab('login')}>{t.tabLogin}</TabButton>
+          <TabButton active={tab === 'signup'} onClick={() => setTab('signup')}>{t.tabSignup}</TabButton>
+          <TabButton active={tab === 'guest'} onClick={() => setTab('guest')}>{t.tabGuest}</TabButton>
         </div>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {(tab === 'login' || tab === 'signup') && (
             <>
               <div className="field">
-                <label>USERNAME</label>
+                <label>{t.lblUsername}</label>
                 <input ref={userRef} type="text" autoFocus required placeholder="player" maxLength={24} />
               </div>
               <div className="field">
-                <label>PASSWORD</label>
-                <input ref={passRef} type="password" required placeholder="••••••••" />
+                <label>{t.lblPassword}</label>
+                <input ref={passRef} type="password" required placeholder="********" />
               </div>
             </>
           )}
 
           {tab === 'guest' && (
             <div className="field">
-              <label>PREFERRED NAME</label>
+              <label>{t.lblPrefName}</label>
               <input ref={guestRef} type="text" autoFocus required placeholder="guest" maxLength={24} />
               <div style={{ fontSize: 11, color: 'var(--amber)', marginTop: 8 }}>
-                Guest accounts can only play casual arenas and do not have ELO.
+                {t.guestWarning}
               </div>
             </div>
           )}
 
-          {error && <div style={{ color: '#D04040', fontSize: 12 }}>ERROR: {error}</div>}
+          {error && <div style={{ color: '#D04040', fontSize: 12 }}>{t.lblError}: {error}</div>}
 
           <button type="submit" className="btn btn-green" disabled={loading} style={{ marginTop: 10 }}>
-            {loading ? 'CONNECTING...' : 'CONNECT TO NETWORK'}
+            {loading ? t.btnConnecting : t.btnConnect}
           </button>
         </form>
       </div>

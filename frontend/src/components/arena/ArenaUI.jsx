@@ -1,4 +1,6 @@
 import { AbilityPill } from '../shared/AbilityPill';
+import { useEffect } from 'react';
+import { sounds } from '../../utils/sounds';
 
 // ── PhaseBar ──────────────────────────────────────────────────────────────────
 
@@ -24,6 +26,14 @@ export function Notification({ show, msg }) {
 // ── GameOverOverlay ───────────────────────────────────────────────────────────
 
 export function GameOverOverlay({ info, t, onReturn, redirectSecs }) {
+  useEffect(() => {
+    if (info) {
+      if (info.draw) sounds.draw();
+      else if (info.won) sounds.win();
+      else sounds.lose();
+    }
+  }, [info]);
+
   if (!info) return null;
 
   const titleClass = info.draw ? 'draw' : info.won ? 'won' : 'lost';
