@@ -55,6 +55,7 @@ type AbilityFiredPayload struct {
 type GameOverPayload struct {
 	ArenaID    string `json:"arena_id"`
 	WinnerID   string `json:"winner_id"`
+	LoserID    string `json:"loser_id"`
 	WinnerRole string `json:"winner_role"`
 	YouWon     bool   `json:"you_won"`
 	Draw       bool   `json:"draw"`

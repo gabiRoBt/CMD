@@ -227,5 +227,56 @@ export const sounds = {
     draw: () => {
         playTone(300, 'square', 0.5, 0.1);
         setTimeout(() => playTone(300, 'square', 0.5, 0.1), 500);
-    }
+    },
+    nukeWhistle: () => {
+        if (isSfxMuted()) return;
+        try {
+            const ctx = getCtx();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sawtooth';
+            // Pitch starts high (1200 Hz) and falls to low (80 Hz) over 1.5 seconds
+            osc.frequency.setValueAtTime(1200, ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(80, ctx.currentTime + 1.5);
+            gain.gain.setValueAtTime(0.0, ctx.currentTime);
+            gain.gain.linearRampToValueAtTime(0.18, ctx.currentTime + 0.15);
+            gain.gain.linearRampToValueAtTime(0.22, ctx.currentTime + 1.2);
+            gain.gain.linearRampToValueAtTime(0.0, ctx.currentTime + 1.5);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + 1.5);
+        } catch (e) { console.error('nukeWhistle error', e); }
+    },
+    nukeBlast: () => {
+        if (isSfxMuted()) return;
+        try {
+            const ctx = getCtx();
+            // Low boom — sine wave
+            const boom = ctx.createOscillator();
+            const boomGain = ctx.createGain();
+            boom.type = 'sine';
+            boom.frequency.setValueAtTime(60, ctx.currentTime);
+            boom.frequency.exponentialRampToValueAtTime(20, ctx.currentTime + 1.2);
+            boomGain.gain.setValueAtTime(0.6, ctx.currentTime);
+            boomGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.2);
+            boom.connect(boomGain);
+            boomGain.connect(ctx.destination);
+            boom.start();
+            boom.stop(ctx.currentTime + 1.2);
+            // White noise burst
+            const bufLen = ctx.sampleRate * 0.8;
+            const buf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
+            const data = buf.getChannelData(0);
+            for (let i = 0; i < bufLen; i++) data[i] = Math.random() * 2 - 1;
+            const noise = ctx.createBufferSource();
+            noise.buffer = buf;
+            const noiseGain = ctx.createGain();
+            noiseGain.gain.setValueAtTime(0.5, ctx.currentTime);
+            noiseGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.8);
+            noise.connect(noiseGain);
+            noiseGain.connect(ctx.destination);
+            noise.start();
+        } catch (e) { console.error('nukeBlast error', e); }
+    },
 };

@@ -9,6 +9,7 @@ import { useAbilities }      from '../hooks/useAbilities';
 import { ArenaScene }    from './arena/ArenaScene';
 import { TerminalWindow } from './arena/TerminalWindow';
 import { ArenaFooter, GameOverOverlay, Notification, PhaseBar } from './arena/ArenaUI';
+import { EndGameCinematic } from './arena/EndGameCinematic';
 
 export default function Arena({
   t, lang = 'en',
@@ -20,6 +21,7 @@ export default function Arena({
 }) {
   const [gameOverInfo, setGameOverInfo] = useState(null);
   const [redirectSecs, setRedirectSecs] = useState(null);
+  const [cinematicDone, setCinematicDone] = useState(false);
 
   const arenaRef      = useRef(null);
   const canvasRef     = useRef(null);
@@ -37,7 +39,10 @@ export default function Arena({
 
   // Game-over via custom window event dispatched by the WS handler in App
   useEffect(() => {
-    const handler = ({ detail: p }) => setGameOverInfo({ won: p.you_won, draw: p.draw ?? false });
+    const handler = ({ detail: p }) => {
+      setGameOverInfo({ won: p.you_won, draw: p.draw ?? false, loser_id: p.loser_id ?? '', winner_id: p.winner_id ?? '' });
+      setCinematicDone(false); // reset so cinematic plays
+    };
     window.addEventListener('gameOver', handler);
     return () => window.removeEventListener('gameOver', handler);
   }, []);
@@ -65,12 +70,14 @@ export default function Arena({
   const handleReturn = useCallback(() => {
     setGameOverInfo(null);
     setRedirectSecs(null);
+    setCinematicDone(false);
     if (onReturnToLobby) onReturnToLobby();
   }, [onReturnToLobby]);
 
+  // Start redirect countdown ONLY after cinematic ends (cinematic ~19s > old 15s timer)
   useEffect(() => {
-    if (!gameOverInfo) return;
-    setRedirectSecs(15);
+    if (!cinematicDone) return;
+    setRedirectSecs(20);
     const interval = setInterval(() => {
       setRedirectSecs(s => {
         if (s <= 1) {
@@ -81,14 +88,17 @@ export default function Arena({
       });
     }, 1000);
     return () => clearInterval(interval);
-  }, [gameOverInfo, handleReturn]);
+  }, [cinematicDone, handleReturn]);
 
   return (
     <div className="arena-wrapper">
       <ArenaScene skin={skin} ref={{ arenaRef, canvasRef }}>
         {!gameOverInfo && <PhaseBar playerID={playerID} phase={phase} t={t}/>}
         <Notification show={notif.show} msg={notif.msg}/>
-        <GameOverOverlay info={gameOverInfo} redirectSecs={redirectSecs} t={t} onReturn={handleReturn}/>
+        {/* GameOverOverlay apare după cinematică (z:9999 > EndGameCinematic z:9000) */}
+        {cinematicDone && (
+          <GameOverOverlay info={gameOverInfo} redirectSecs={redirectSecs} t={t} onReturn={handleReturn}/>
+        )}
       </ArenaScene>
 
       {/* Animated dashed arc: terminal ↔ antenna */}
@@ -119,6 +129,16 @@ export default function Arena({
           lang={lang}
           t={t}
           onUseAbility={triggerAbility}
+        />
+      )}
+
+      {/* ── End-Game Cinematic — unmounts when cinematicDone, same frame as GameOverOverlay mounts ── */}
+      {gameOverInfo && !cinematicDone && (
+        <EndGameCinematic
+          info={gameOverInfo}
+          playerID={playerID}
+          skin={skin}
+          onComplete={() => setCinematicDone(true)}
         />
       )}
     </div>

@@ -48,11 +48,24 @@
 
 /* ── WINNER OVERLAY ── */
 #winner-overlay {
-    display:none; position:fixed; inset:0; background:rgba(0,0,0,.93);
+    display:none; position:fixed; inset:0; background:#ffffff;
     z-index:9999; align-items:center; justify-content:center;
     flex-direction:column; text-align:center;
 }
-#winner-overlay.show { display:flex; }
+#winner-overlay::before {
+    content:''; position:absolute; inset:0; background:rgba(0,0,0,.93); z-index:-1;
+}
+#winner-overlay.show {
+    display: flex;
+}
+#winner-overlay.show::before,
+#winner-overlay.show > * {
+    animation: winnerFadeIn 0.55s ease forwards;
+}
+@keyframes winnerFadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
 .winner-title {
     font-family:'Orbitron', monospace; font-size:2.8rem;
     font-weight:900; letter-spacing:.3em; margin-bottom:.8rem;
@@ -61,3 +74,21 @@
 .lost { color:var(--red);   text-shadow:0 0 40px var(--red); }
 .draw { color:var(--amber); text-shadow:0 0 40px var(--amber); }
 .winner-sub { color:var(--text-dim); font-size:.85rem; margin-bottom:1.8rem; }
+
+/* ── END-GAME CINEMATIC ── */
+@keyframes rocketFallDown {
+    0%   { transform: translateX(-50%) translateY(-120px) rotate(0deg); opacity: 1; }
+    80%  { transform: translateX(-50%) translateY(55vh) rotate(3deg); opacity: 1; }
+    100% { transform: translateX(-50%) translateY(62vh) rotate(5deg); opacity: 0; }
+}
+
+@keyframes cinematicFadeIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+#end-game-cinematic {
+    /* Full-screen overlay, appears above arena but below GameOverOverlay (z:9999) */
+    font-family: 'Orbitron', monospace;
+}
+

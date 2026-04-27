@@ -60,7 +60,14 @@ export function useGameState({ startCountdown, stopCountdown, onGameStart, initi
 
       case 'game_over':
         stopCountdown();
-        window.dispatchEvent(new CustomEvent('gameOver', { detail: ev.payload }));
+        window.dispatchEvent(new CustomEvent('gameOver', {
+          detail: {
+            you_won:   ev.payload.you_won,
+            draw:      ev.payload.draw ?? false,
+            winner_id: ev.payload.winner_id ?? '',
+            loser_id:  ev.payload.loser_id  ?? '',
+          },
+        }));
         break;
 
       case 'kicked':

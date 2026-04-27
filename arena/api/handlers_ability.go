@@ -123,9 +123,19 @@ func (s *Server) watchPhaseTransition(a *manager.Arena) {
 	s.manager.RunAttackTimer(a, func() {
 		log.Printf("[Arena %s] Timeout — DRAW", a.ID)
 		for _, p := range []*manager.Player{a.Host, a.Guest} {
+			guestID := ""
+			if a.Guest != nil {
+				guestID = a.Guest.ID
+			}
 			s.hub.SendToPlayer(p.ID, ws.WSEvent{
-				Type:    ws.EventGameOver,
-				Payload: ws.GameOverPayload{ArenaID: a.ID, YouWon: false, Draw: true},
+				Type: ws.EventGameOver,
+				Payload: ws.GameOverPayload{
+					ArenaID:  a.ID,
+					YouWon:   false,
+					Draw:     true,
+					WinnerID: a.Host.ID,
+					LoserID:  guestID,
+				},
 			})
 		}
 		time.AfterFunc(1*time.Second, s.broadcastArenaList)
@@ -133,12 +143,17 @@ func (s *Server) watchPhaseTransition(a *manager.Arena) {
 }
 
 func (s *Server) notifyGameOver(a *manager.Arena, winner *manager.Player) {
+	loser := a.Host
+	if winner == a.Host {
+		loser = a.Guest
+	}
 	for _, p := range []*manager.Player{a.Host, a.Guest} {
 		s.hub.SendToPlayer(p.ID, ws.WSEvent{
 			Type: ws.EventGameOver,
 			Payload: ws.GameOverPayload{
 				ArenaID:    a.ID,
 				WinnerID:   winner.ID,
+				LoserID:    loser.ID,
 				WinnerRole: string(winner.Role),
 				YouWon:     p.ID == winner.ID,
 				Draw:       false,
