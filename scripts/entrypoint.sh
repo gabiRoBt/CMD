@@ -15,6 +15,10 @@ echo "$SECRET_PASSWORD" > /home/player/nuclearcodes.txt
 chmod 644 /home/player/nuclearcodes.txt
 chown player:player /home/player/nuclearcodes.txt
 
+echo -n "$SECRET_PASSWORD" | sha256sum | awk '{print $1}' > /etc/nuke_hash
+chmod 644 /etc/nuke_hash
+
+
 SEED="${ARENA_ID:-default}-${PLAYER_ROLE:-player}"
 RAND_BASE=$(echo "$SEED" | md5sum | tr -dc '0-9' | head -c 6)
 

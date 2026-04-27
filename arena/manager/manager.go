@@ -13,6 +13,7 @@ type Phase string
 
 const (
 	PhaseWaiting    Phase = "waiting"
+	PhaseCountdown  Phase = "countdown"
 	PhaseSetup      Phase = "setup"
 	PhaseInfiltrate Phase = "infiltrate"
 	PhaseFinished   Phase = "finished"
@@ -99,4 +100,12 @@ func (a *Arena) JoinGuest(guestPlayerID string) {
 func (a *Arena) BothReady() bool {
 	return a.Host != nil && a.Guest != nil &&
 		a.Host.Ready && a.Guest.Ready
+}
+
+func (m *Manager) StartSetupTimer(a *Arena) {
+	m.mu.Lock()
+	a.Phase = PhaseSetup
+	a.StartedAt = time.Now()
+	m.mu.Unlock()
+	go m.runSetupTimer(a)
 }

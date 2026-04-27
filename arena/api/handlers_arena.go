@@ -3,6 +3,7 @@ package api
 import (
 	"CMD/arena/auth"
 	"CMD/arena/manager"
+	"CMD/arena/ws"
 	"encoding/json"
 	"net/http"
 	"time"
@@ -87,13 +88,25 @@ func (s *Server) handleSetReady(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 400)
 		return
 	}
-	if a.Phase == manager.PhaseSetup {
+	if a.Phase == manager.PhaseCountdown {
 		s.notifyGameStart(a)
 		s.manager.WatchForWinner(a, func(winner *manager.Player) {
 			s.notifyGameOver(a, winner)
 			time.AfterFunc(1*time.Second, s.broadcastArenaList)
 		})
-		go s.watchPhaseTransition(a)
+		go func() {
+			time.Sleep(6 * time.Second)
+			s.manager.StartSetupTimer(a)
+			event := ws.WSEvent{
+				Type:    ws.EventPhaseChange,
+				Payload: map[string]interface{}{"phase": manager.PhaseSetup},
+			}
+			s.hub.SendToPlayer(a.Host.ID, event)
+			if a.Guest != nil {
+				s.hub.SendToPlayer(a.Guest.ID, event)
+			}
+			s.watchPhaseTransition(a)
+		}()
 	}
 	s.broadcastArenaList()
 	writeJSON(w, map[string]string{"status": "ok", "phase": string(a.Phase)})
@@ -122,6 +135,9 @@ func (s *Server) handleLeaveArena(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if a.Host != nil && a.Host.ID == req.PlayerID {
+		if a.Guest != nil {
+			s.hub.SendToPlayer(a.Guest.ID, ws.WSEvent{Type: "kicked", Payload: nil})
+		}
 		s.manager.DeleteArena(req.ArenaID)
 	} else if a.Guest != nil && a.Guest.ID == req.PlayerID {
 		a.Guest = nil

@@ -1,0 +1,179 @@
+/* ══════════════════════════════════════════════════════════════
+   JUNGLE VIBE SKIN — Redesign
+   ══════════════════════════════════════════════════════════════ */
+
+#arena.skin-jungle {
+    --green:      #7ee840;
+    --green-dim:  #4a9a1a;
+    --green-dark: #1a3a08;
+    --amber:      #d4a020;
+    --red:        #e05020;
+    --bg:         #060f02;
+    --panel:      #0a1804;
+    --border:     #2a4a10;
+    --text:       #88d840;
+    --text-dim:   #3a6010;
+
+    /* TRUE tropical blue sky — deep navy at top, light sky-blue at horizon */
+    --sky-bg: linear-gradient(to bottom,
+                #0c1f5a  0%,
+                #143888  6%,
+                #1e54b0 14%,
+                #2c72cc 26%,
+                #3c90de 40%,
+                #52aaea 55%,
+                #6ec0f4 70%,
+                #8dd4fa 84%,
+                #aae6ff 94%,
+                #c2f0ff 100%);
+
+    /* Ground band */
+    --ground-bg: linear-gradient(to bottom,
+                    #1a3a0a  0%,
+                    #122806 35%,
+                    #0c1c04 70%,
+                    #080e02 100%);
+
+    --sep-color: #2a6a10;
+}
+
+/* Remove any green overlay — old ::before/::after had green particles at z:4
+   that were tinting the whole scene green. Replaced with clean subtle haze only */
+#arena.skin-jungle .top-band::after {
+    content:''; position:absolute; inset:0; pointer-events:none;
+    /* Subtle warm golden light-scatter near horizon — does NOT affect sky color */
+    background:
+        radial-gradient(ellipse 35% 22% at 50% 100%, rgba(255,220,120,0.08) 0%, transparent 70%),
+        radial-gradient(ellipse 20% 18% at 12%  98%, rgba(255,200,100,0.05) 0%, transparent 70%),
+        radial-gradient(ellipse 20% 18% at 88%  98%, rgba(255,200,100,0.05) 0%, transparent 70%);
+}
+
+/* ── Terminal / UI chrome ── */
+#arena.skin-jungle .term-titlebar               { background:#1a3a08; }
+#arena.skin-jungle #terminal-win                { border-color:#2e5a12; background:#091603; }
+#arena.skin-jungle .term-btn                    { background:#2e5a12; }
+#arena.skin-jungle .term-bubble-tail-left         { border-right-color:#2e5a12; }
+#arena.skin-jungle .term-bubble-tail-left::after  { border-right-color:#091603; }
+#arena.skin-jungle .term-bubble-tail-right        { border-left-color:#2e5a12; }
+#arena.skin-jungle .term-bubble-tail-right::after { border-left-color:#091603; }
+#arena.skin-jungle #phase-bar { background:rgba(5,12,2,0.93); border-bottom-color:#2a4a10; }
+
+/* ════════════════════════════════════════════════════════════════
+   ANIMATIONS
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── Firefly pulse ── */
+@keyframes jg-firefly {
+    0%,100% { opacity:0.04; transform:scale(0.6) translate(  0px,  0px); }
+    25%     { opacity:0.92; transform:scale(1.4) translate(  6px, -9px); }
+    55%     { opacity:0.55; transform:scale(1.0) translate( -6px,  5px); }
+    80%     { opacity:0.08; transform:scale(0.7) translate(  4px, 10px); }
+}
+
+/* ── Vine sway ── */
+@keyframes jg-vine-sway {
+    0%,100% { transform:rotate( 0deg)   translateX(0px);  }
+    28%     { transform:rotate( 4.5deg) translateX(5px);  }
+    72%     { transform:rotate(-4deg)   translateX(-5px); }
+}
+
+/* ── LED blink ── */
+@keyframes jg-led-blink {
+    0%,100% { opacity:0.80; }
+    50%     { opacity:0.15; }
+}
+.jg-led-blink { animation:jg-led-blink 2.4s ease-in-out infinite; }
+
+/* ════════════════════════════════════════════════════════════════
+   BIRD FLOCK
+   ════════════════════════════════════════════════════════════════ */
+@keyframes jg-birdwing {
+    0%,100% { d: path("M-9,-5 L0,0 L9,-5"); }
+    50%     { d: path("M-9, 4 L0,0 L9, 4"); }
+}
+.jg-birdwing { animation: jg-birdwing 0.44s ease-in-out infinite; }
+
+@keyframes jg-flock-lr {
+    from { transform: translateX(-14vw); }
+    to   { transform: translateX(114vw); }
+}
+@keyframes jg-flock-rl {
+    from { transform: translateX(114vw) scaleX(-1); }
+    to   { transform: translateX(-14vw) scaleX(-1); }
+}
+.jg-flock1 { animation: jg-flock-lr 16s linear infinite;       }
+.jg-flock2 { animation: jg-flock-rl 22s linear infinite  -6s;  }
+.jg-flock3 { animation: jg-flock-lr 29s linear infinite -13s;  }
+
+/* ── Parrot perched bob ── */
+@keyframes jg-parrot-bob {
+    0%,100% { transform:translateY(0px)  rotate( 0deg); }
+    35%     { transform:translateY(-3px) rotate(-2deg); }
+    70%     { transform:translateY(-1px) rotate( 2deg); }
+}
+.jg-parrot { animation: jg-parrot-bob 3.8s ease-in-out infinite; transform-origin:bottom center; }
+
+/* ── Monkey sitting bob ── */
+@keyframes jg-monkey-bob {
+    0%,100% { transform:translateY(0px)  rotate( 0deg); }
+    30%     { transform:translateY(-4px) rotate(-1.5deg); }
+    65%     { transform:translateY(-2px) rotate( 1deg);  }
+}
+.jg-monkey-bob { animation: jg-monkey-bob 5s ease-in-out infinite; transform-origin:top center; }
+
+/* ── Ground mist drift ── */
+@keyframes jg-mist {
+    0%,100% { opacity:0.45; transform:scaleX(1.0) translateX(  0px); }
+    40%     { opacity:0.70; transform:scaleX(1.04) translateX( 12px); }
+    75%     { opacity:0.38; transform:scaleX(0.97) translateX(-10px); }
+}
+.jg-mist { animation: jg-mist 8s ease-in-out infinite; }
+
+/* ── Remove the green-particle overlay that was coloring everything green ── */
+#arena.skin-jungle::before,
+#arena.skin-jungle::after { display:none; }
+
+/* ══════════════════════════════════════════════════════════════
+   CLOUD ANIMATIONS — each cloud drifts independently
+   ══════════════════════════════════════════════════════════════ */
+
+/* Gentle float right then back */
+@keyframes jg-cloud-a {
+    0%   { transform: translateX(0px)   translateY(0px); }
+    40%  { transform: translateX(22px)  translateY(-5px); }
+    100% { transform: translateX(0px)   translateY(0px); }
+}
+/* Float left and slightly down */
+@keyframes jg-cloud-b {
+    0%   { transform: translateX(0px)   translateY(0px); }
+    45%  { transform: translateX(-18px) translateY(4px); }
+    100% { transform: translateX(0px)   translateY(0px); }
+}
+/* Slow wide right drift */
+@keyframes jg-cloud-c {
+    0%   { transform: translateX(0px)   translateY(0px); }
+    50%  { transform: translateX(32px)  translateY(-3px); }
+    100% { transform: translateX(0px)   translateY(0px); }
+}
+/* Slow left drift with bob */
+@keyframes jg-cloud-d {
+    0%   { transform: translateX(0px)   translateY(0px); }
+    30%  { transform: translateX(-8px)  translateY(-6px); }
+    70%  { transform: translateX(-24px) translateY(2px); }
+    100% { transform: translateX(0px)   translateY(0px); }
+}
+/* Very slow right float */
+@keyframes jg-cloud-e {
+    0%   { transform: translateX(0px); }
+    50%  { transform: translateX(14px); }
+    100% { transform: translateX(0px); }
+}
+
+.jg-cl1 { animation: jg-cloud-a 20s ease-in-out infinite; }
+.jg-cl2 { animation: jg-cloud-b 16s ease-in-out infinite 2s; }
+.jg-cl3 { animation: jg-cloud-c 28s ease-in-out infinite 1s; }
+.jg-cl4 { animation: jg-cloud-d 24s ease-in-out infinite 4s; }
+.jg-cl5 { animation: jg-cloud-a 22s ease-in-out infinite reverse 3s; }
+.jg-cl6 { animation: jg-cloud-b 18s ease-in-out infinite 6s; }
+.jg-cl7 { animation: jg-cloud-e 32s ease-in-out infinite 1.5s; }
+.jg-cl8 { animation: jg-cloud-c 26s ease-in-out infinite reverse 5s; }

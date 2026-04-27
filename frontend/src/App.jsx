@@ -114,6 +114,8 @@ export default function App() {
                if (status.phase === 'waiting' || status.phase === 'starting') {
                  // Remain in lobby panel
                  setView('lobby');
+               } else if (status.phase === 'countdown') {
+                 setView('countdown');
                } else if (status.phase === 'setup' || status.phase === 'infiltrate') {
                  // Jump into ongoing arena
                  setInitialGameState({
@@ -152,8 +154,18 @@ export default function App() {
       setArenaID(null);
       setRole(null);
     };
+    const onKicked = () => {
+      returnToLobby();
+      // Optional: we could show an alert or set an error state here
+      // alert("Host left the arena");
+    };
+    
     window.addEventListener('auth_expired', onAuthExpired);
-    return () => window.removeEventListener('auth_expired', onAuthExpired);
+    window.addEventListener('kicked', onKicked);
+    return () => {
+      window.removeEventListener('auth_expired', onAuthExpired);
+      window.removeEventListener('kicked', onKicked);
+    };
   }, []);
 
   // ── Actions ──────────────────────────────────────────────────────────────

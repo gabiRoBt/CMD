@@ -8,11 +8,13 @@ export const ANTENNA_FRAC = {
   'skin-classic':   { x: 0.50,  y: 0.12 },
   'skin-cyberpunk': { x: 0.495, y: 0.04 },
   'skin-wasteland': { x: 0.50,  y: 0.10 },
+  'skin-jungle':    { x: 0.50,  y: 0.063 },
 };
 
 export const SKINS = [
   { value: 'skin-classic',   label: 'SKIN: SIBERIA'   },
   { value: 'skin-wasteland', label: 'SKIN: WASTELAND'  },
   { value: 'skin-cyberpunk', label: 'SKIN: RETRO'      },
+  { value: 'skin-jungle',    label: 'SKIN: JUNGLE'     },
   { value: 'skin-dev-mode',  label: 'SKIN: DEV MODE'   },
 ];

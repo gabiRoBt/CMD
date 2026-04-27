@@ -7,7 +7,10 @@ export function ArenaPanel({ t, user, arenaID, currentArena, arenaList, onUpdate
   const [loading,  setLoading]  = useState(false);
   const [isReady,  setIsReady]  = useState(false);
 
-  const [arenaName, setArenaName] = useState(`${user?.username || 'Player'}'s Arena`);
+  const [arenaName, setArenaName] = useState(() => {
+    const suffix = Math.floor(1000 + Math.random() * 9000); // 4-digit random
+    return `${user?.username || 'Player'}'s Arena #${suffix}`;
+  });
   const [arenaType, setArenaType] = useState('casual');
 
   const playerID = user?.username;
@@ -71,8 +74,14 @@ export function ArenaPanel({ t, user, arenaID, currentArena, arenaList, onUpdate
     if (currentArena && playerID) {
       if (currentArena.host_id === playerID && currentArena.host_ready) setIsReady(true);
       if (currentArena.guest_id === playerID && currentArena.guest_ready) setIsReady(true);
+    } else if (arenaID && !currentArena && arenaList.length > 0) {
+      // If we are waiting in an arena, but it's no longer in the list, it means the host left / deleted it.
+      onLeaveArena();
+      setIsReady(false);
+      setStatus('');
+      showError(t.errHostLeft || 'Host closed the arena');
     }
-  }, [currentArena, playerID]);
+  }, [currentArena, arenaID, arenaList, playerID, onLeaveArena, t.errHostLeft]);
 
   // Derive if the current arena has a guest (so we can show "waiting" vs "opponent joined")
   const hasGuest = currentArena?.has_guest;

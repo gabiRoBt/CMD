@@ -1,10 +1,11 @@
-import { forwardRef } from 'react';
+import { forwardRef, useEffect } from 'react';
 import {
   SKIN_BASES,
   SiberiaDecorations,
   RetroDecorations,
   WastelandDecorations,
   DevModeDecorations,
+  JungleDecorations,
 } from '../../skins';
 
 const SKIN_DECORATIONS = {
@@ -12,6 +13,7 @@ const SKIN_DECORATIONS = {
   'skin-cyberpunk': RetroDecorations,
   'skin-wasteland': WastelandDecorations,
   'skin-dev-mode':  DevModeDecorations,
+  'skin-jungle':    JungleDecorations,
 };
 
 /**
@@ -27,8 +29,10 @@ export const ArenaScene = forwardRef(function ArenaScene(
   const Base        = SKIN_BASES[skin]        ?? SKIN_BASES['skin-classic'];
   const Decorations = SKIN_DECORATIONS[skin];
 
+  // AppHeader already applies the skin class to <body>.
+
   return (
-    <div id="arena" ref={arenaRef}>
+    <div id="arena" className={skin ?? ''} ref={arenaRef}>
       <div className="top-band"/>
       <div className="band-separator"/>
       <div className="bottom-band"/>

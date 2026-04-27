@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { api } from '../api';
 import { ABILITY_EFFECTS } from '../constants/abilities';
 import { PHASE } from '../constants/game';
+import { i18n } from '../i18n';
 import { sounds } from '../utils/sounds';
 
 /**
@@ -24,7 +25,7 @@ export function useAbilities({ arenaID, playerID, phase, lang, fireAnimation, sh
 
   const triggerAbility = useCallback(async (name) => {
     if (phase !== PHASE.INFILTRATE) {
-      showNotif('ONLY IN INFILTRATE PHASE!');
+      showNotif(i18n[lang]?.notifOnlyInfil ?? 'ONLY IN INFILTRATE PHASE!');
       return;
     }
     if (usedAbilities.has(name)) return;

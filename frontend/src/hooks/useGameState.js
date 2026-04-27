@@ -34,13 +34,13 @@ export function useGameState({ startCountdown, stopCountdown, onGameStart, initi
         setPhase(ev.payload.phase);
         setAbilities([]);
         setIncomingAbility(null);
-        startCountdown(ev.payload.setup_seconds ?? SETUP_SECONDS);
         onGameStart(ev.payload);
         break;
 
       case 'phase_change':
         setPhase(ev.payload.phase);
         if (ev.payload.phase === PHASE.INFILTRATE) startCountdown(INFILTRATE_SECONDS);
+        if (ev.payload.phase === PHASE.SETUP || ev.payload.phase === 'setup') startCountdown(SETUP_SECONDS);
         break;
 
       case 'pouch_result':
@@ -61,6 +61,10 @@ export function useGameState({ startCountdown, stopCountdown, onGameStart, initi
       case 'game_over':
         stopCountdown();
         window.dispatchEvent(new CustomEvent('gameOver', { detail: ev.payload }));
+        break;
+
+      case 'kicked':
+        window.dispatchEvent(new CustomEvent('kicked', { detail: ev.payload }));
         break;
 
       default:

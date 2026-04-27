@@ -8,8 +8,28 @@ export const ABILITY_DEFS = {
 
 /** Localised effect descriptions shown in the notification bar. */
 export const ABILITY_EFFECTS = {
-  scramble: { ro: 'COMENZI INAMIC AMESTECATE  −20 HP', en: 'ENEMY COMMANDS SCRAMBLED  −20 HP' },
-  repair:   { ro: 'REPARAȚIE ACTIVATĂ  +15 HP',         en: 'REPAIR KIT ACTIVATED  +15 HP'    },
-  rocket:   { ro: 'INPUT INAMIC BLOCAT — 10s  −25 HP',  en: 'ENEMY INPUT LOCKED — 10s  −25 HP' },
-  sonar:    { ro: 'DIRECTOARE GOALE ȘTERSE  −15 HP',    en: 'EMPTY FOLDERS DELETED  −15 HP'   },
+  scramble: {
+    ro: 'COMENZI INAMIC AMESTECATE',
+    en: 'ENEMY COMMANDS SCRAMBLED',
+    es: 'COMANDOS ENEMIGOS MEZCLADOS',
+    fr: 'COMMANDES ENNEMIES BROUILLÉES'
+  },
+  repair: {
+    ro: 'REPARAȚIE ACTIVATĂ',
+    en: 'REPAIR KIT ACTIVATED',
+    es: 'KIT DE REPARACIÓN ACTIVADO',
+    fr: 'KIT DE RÉPARATION ACTIVÉ'
+  },
+  rocket: {
+    ro: 'INPUT INAMIC BLOCAT',
+    en: 'ENEMY INPUT LOCKED',
+    es: 'ENTRADA ENEMIGA BLOQUEADA',
+    fr: 'SAISIE ENNEMIE BLOQUÉE'
+  },
+  sonar: {
+    ro: 'DIRECTOARE GOALE ȘTERSE',
+    en: 'EMPTY FOLDERS DELETED',
+    es: 'CARPETAS VACÍAS ELIMINADAS',
+    fr: 'DOSSIERS VIDES SUPPRIMÉS'
+  },
 };

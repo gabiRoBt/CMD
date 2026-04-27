@@ -112,7 +112,7 @@ func (s *Server) handleWSTerminal(w http.ResponseWriter, r *http.Request) {
 
 	var targetPort int
 	switch a.Phase {
-	case manager.PhaseSetup:
+	case manager.PhaseCountdown, manager.PhaseSetup:
 		if playerID == a.Host.ID {
 			targetPort = a.Host.SSHPort
 		} else {

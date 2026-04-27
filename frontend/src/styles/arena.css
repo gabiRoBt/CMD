@@ -35,14 +35,7 @@
 #phase-name  { font-size:10px; letter-spacing:.15em; font-family:monospace; justify-self:center; }
 .phase-nuke  { font-size:9px; color:#4A6741; letter-spacing:.1em; font-family:monospace; justify-self:end; opacity:.8; }
 
-/* ── HP BARS (kept for backward compat, not rendered by default) ── */
-.hp-bar-wrap { position:absolute; bottom:3%; display:flex; flex-direction:column; gap:2px; z-index:20; }
-#hp-player   { left:5%; align-items:flex-start; }
-#hp-enemy    { right:5%; align-items:flex-end; }
-.hp-label    { font-size:9px; color:#fff; text-shadow:1px 1px 2px #000; font-family:monospace; letter-spacing:.08em; }
-.hp-track    { width:120px; height:5px; background:#1A2318; border:1px solid #000; }
-.hp-fill     { height:100%; transition:width .5s ease, background .5s ease; }
-.hp-pct      { font-size:8px; font-family:monospace; margin-top:1px; }
+
 
 /* ── NOTIFICATION ── */
 #notif {

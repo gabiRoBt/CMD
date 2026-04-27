@@ -69,9 +69,7 @@ export const i18n = {
         phaseInfil:    "!! FAZA INFILTRARE",
         arenaStarting: "ARENA PORNEȘTE",
 
-        // HP
-        lblSysYou:     "INTEGRITATE (TU)",
-        lblSysEnemy:   "INTEGRITATE (INAMIC)",
+
 
         // Terminal
         termTitle:     "CMD :: TERMINAL SECURIZAT",
@@ -179,9 +177,7 @@ export const i18n = {
         phaseInfil:    "!! INFILTRATE PHASE",
         arenaStarting: "ARENA STARTING",
 
-        // HP
-        lblSysYou:     "SYS INTEGRITY (YOU)",
-        lblSysEnemy:   "SYS INTEGRITY (ENEMY)",
+
 
         // Terminal
         termTitle:     "CMD :: SECURE TERMINAL",
@@ -283,8 +279,7 @@ export const i18n = {
         phaseInfil:    "!! FASE DE INFILTRACIÓN",
         arenaStarting: "ARENA INICIANDO",
 
-        lblSysYou:     "INTEGRIDAD DEL SIS (TÚ)",
-        lblSysEnemy:   "INTEGRIDAD DEL SIS (ENEMIGO)",
+
 
         termTitle:     "CMD :: TERMINAL SEGURO",
         notifOnlyInfil:"¡SOLO EN LA FASE DE INFILTRACIÓN!",
@@ -379,8 +374,7 @@ export const i18n = {
         phaseInfil:    "!! PHASE D'INFILTRATION",
         arenaStarting: "L'ARÈNE COMMENCE",
 
-        lblSysYou:     "INTÉGRITÉ SYS (VOUS)",
-        lblSysEnemy:   "INTÉGRITÉ SYS (ENNEMI)",
+
 
         termTitle:     "CMD :: TERMINAL SÉCURISÉ",
 

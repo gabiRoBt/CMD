@@ -10,6 +10,8 @@ import './styles/skin-dev-mode.css';
 import './styles/skin-siberia.css';
 import './styles/skin-retro.css';
 import './styles/skin-wasteland.css';
+import './styles/skin-jungle.css';
+
 import { sounds } from './utils/sounds';
 
 import App from './App';

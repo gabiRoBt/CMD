@@ -107,10 +107,8 @@ func (m *Manager) startContainers(a *Arena) error {
 		}
 	}
 
-	a.Phase = PhaseSetup
-	a.StartedAt = time.Now()
+	a.Phase = PhaseCountdown
 	log.Printf("[Arena %s] Ready — Host:%d | Guest:%d", a.ID, hostPort, guestPort)
-	go m.runSetupTimer(a)
 	return nil
 }
 

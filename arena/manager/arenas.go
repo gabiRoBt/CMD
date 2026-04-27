@@ -105,10 +105,10 @@ func (m *Manager) SetReady(arenaID, playerID string) (*Arena, error) {
 	if !ok {
 		return nil, fmt.Errorf("arena %s not found", arenaID)
 	}
-	switch playerID {
-	case a.Host.ID:
+	switch {
+	case a.Host.ID == playerID:
 		a.Host.Ready = true
-	case a.Guest.ID:
+	case a.Guest != nil && a.Guest.ID == playerID:
 		a.Guest.Ready = true
 	default:
 		return nil, fmt.Errorf("player %s not in arena %s", playerID, arenaID)
