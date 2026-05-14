@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '../../api';
 
-export function ArenaPanel({ t, user, arenaID, currentArena, arenaList, onUpdateArena, onLeaveArena }) {
+export function ArenaPanel({ t, user, arenaID, currentArena, arenaList, onUpdateArena, onLeaveArena, lang }) {
   const [status,   setStatus]   = useState('');
   const [error,    setError]    = useState('');
   const [loading,  setLoading]  = useState(false);
@@ -29,7 +29,7 @@ export function ArenaPanel({ t, user, arenaID, currentArena, arenaList, onUpdate
     setLoading(true);
     try {
       const typeToUse = user?.isGuest ? 'casual' : arenaType;
-      const d = await api.createArena(arenaName, typeToUse);
+      const d = await api.createArena(arenaName, typeToUse, lang);
       onUpdateArena(d.arena_id, d.role);
       setStatus(t.statusWaitMatch || 'Waiting for opponent...');
     } catch (e) {
@@ -64,6 +64,20 @@ export function ArenaPanel({ t, user, arenaID, currentArena, arenaList, onUpdate
       setStatus(t.statusPrep || 'Ready! Waiting for opponent to ready up...');
     } catch (e) {
       showError(e.message || 'Failed to set ready');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const setUnready = async () => {
+    if (loading || !isReady) return;
+    setLoading(true);
+    try {
+      await api.setUnready(arenaID, playerID);
+      setIsReady(false);
+      setStatus(t.statusWaitPeer || 'Wait for an opponent...');
+    } catch (e) {
+      showError(e.message || 'Failed to set unready');
     } finally {
       setLoading(false);
     }
@@ -200,9 +214,14 @@ export function ArenaPanel({ t, user, arenaID, currentArena, arenaList, onUpdate
               <button className="btn btn-amber" style={{ flex: 1 }} onClick={leaveArena} disabled={loading}>
                 {t.btnLeave || '[ X ] LEAVE'}
               </button>
-              {hasGuest && !isReady && (
-                <button className="btn btn-green" style={{ flex: 2 }} onClick={setReady} disabled={loading}>
-                  {t.btnReady || '[ v ] I AM READY'}
+              {hasGuest && (
+                <button 
+                  className={`btn ${isReady ? 'btn-amber' : 'btn-green'}`} 
+                  style={{ flex: 2 }} 
+                  onClick={isReady ? setUnready : setReady} 
+                  disabled={loading}
+                >
+                  {isReady ? (t.btnUnready || '[ x ] UNREADY') : (t.btnReady || '[ v ] I AM READY')}
                 </button>
               )}
             </div>

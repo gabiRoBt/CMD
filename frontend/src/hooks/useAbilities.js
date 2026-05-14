@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { api } from '../api';
 import { ABILITY_EFFECTS } from '../constants/abilities';
 import { PHASE } from '../constants/game';
@@ -18,8 +18,10 @@ import { sounds } from '../utils/sounds';
  */
 export function useAbilities({ arenaID, playerID, phase, lang, fireAnimation, showNotif }) {
   const [usedAbilities, setUsedAbilities] = useState(new Set());
+  const usedRef = useRef(new Set()); // Ref-based guard against rapid double-fire
 
   const markUsed = useCallback((name) => {
+    usedRef.current.add(name);
     setUsedAbilities(prev => new Set([...prev, name]));
   }, []);
 
@@ -28,7 +30,7 @@ export function useAbilities({ arenaID, playerID, phase, lang, fireAnimation, sh
       showNotif(i18n[lang]?.notifOnlyInfil ?? 'ONLY IN INFILTRATE PHASE!');
       return;
     }
-    if (usedAbilities.has(name)) return;
+    if (usedRef.current.has(name)) return;
 
     const isRepair = name === 'repair';
 

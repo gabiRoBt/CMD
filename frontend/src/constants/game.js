@@ -1,5 +1,6 @@
 export const PHASE = /** @type {const} */ ({
   WAITING:    'waiting',
+  COUNTDOWN:  'countdown',
   SETUP:      'setup',
   INFILTRATE: 'infiltrate',
   FINISHED:   'finished',

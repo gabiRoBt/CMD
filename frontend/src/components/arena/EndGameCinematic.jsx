@@ -87,9 +87,10 @@ export function EndGameCinematic({ info, playerID, skin = 'skin-classic', onComp
   const Base  = SKIN_BASES[skin] ?? SKIN_BASES['skin-classic'];
   const theme = SKIN_THEMES[skin] || SKIN_THEMES['skin-classic'];
 
-  const canvasRef = useRef(null);
-  const cancelRef = useRef(null);
-  const baseRef   = useRef(null);
+  const baseRef     = useRef(null);
+  const canvasRef   = useRef(null);
+  const cancelRef   = useRef(null);
+  const whiteoutRef = useRef(null);
 
   const [phase,         setPhase]         = useState('blackout');
   const [overlayAlpha,  setOverlayAlpha]  = useState(0); // blackout fade
@@ -115,7 +116,7 @@ export function EndGameCinematic({ info, playerID, skin = 'skin-classic', onComp
     resize();
     window.addEventListener('resize', resize);
     return () => window.removeEventListener('resize', resize);
-  }, []);
+  }, [info]);
 
   useEffect(() => () => cancelRef.current?.(), []);
 
@@ -131,6 +132,10 @@ export function EndGameCinematic({ info, playerID, skin = 'skin-classic', onComp
       fadeOutBGM(600);
       setShowCanvas(false);
       setOverlayAlpha(0);
+
+      // Launch sounds 0.5s earlier (during blackout)
+      if (isDraw) sounds.draw?.();
+      else sounds.war?.();
 
       let start = null;
       let raf;
@@ -154,7 +159,6 @@ export function EndGameCinematic({ info, playerID, skin = 'skin-classic', onComp
     // ── NUKE FALL (close-up, sky bg on canvas) ─────────────────────────────
     else if (phase === 'nuke_fall') {
       if (!ctx) return;
-      sounds.nukeWhistle?.();
       cancelRef.current = animNukeFall(canvas, ctx, skin, () => setPhase('base_view'));
     }
 
@@ -172,7 +176,6 @@ export function EndGameCinematic({ info, playerID, skin = 'skin-classic', onComp
           : canvas.height * 0.62;
 
         cancelRef.current = animBombApproach(canvas, ctx, targetY, skin, () => {
-          setShowBaseHTML(false);
           setShowLoserName(false);
           setPhase('blast');
         });
@@ -181,20 +184,17 @@ export function EndGameCinematic({ info, playerID, skin = 'skin-classic', onComp
 
     // ── BLAST — whiteout from center, then GameOverOverlay ─────────────────
     else if (phase === 'blast') {
-      setShowBaseHTML(false);
-      setShowLoserName(false);
       const cx = (canvas?.width  || window.innerWidth)  / 2;
       const cy = (canvas?.height || window.innerHeight) * 0.62;
-      sounds.nukeBlast?.();
 
       // Run canvas animation (cosmetic — does NOT block onComplete)
       if (ctx) {
-        cancelRef.current = animNukeBlast(canvas, ctx, cx, cy, skin, () => {});
+        cancelRef.current = animNukeBlast(canvas, ctx, cx, cy, skin, whiteoutRef, () => {});
       }
 
       // onComplete is ALWAYS called via timeout — not via canvas callback.
-      // This is the reliable path to the win screen regardless of canvas state.
-      const t = setTimeout(() => onComplete?.(), 2900); // blast 2500ms + 400ms buffer
+      // Wait a bit more until showing the lose screen (was 2600)
+      const t = setTimeout(() => onComplete?.(), 4500);
       const prevCancel = cancelRef.current;
       cancelRef.current = () => {
         clearTimeout(t);
@@ -261,8 +261,11 @@ export function EndGameCinematic({ info, playerID, skin = 'skin-classic', onComp
         }}
       />
 
+      {/* ── Whiteout overlay (z=4) ── */}
+      <div ref={whiteoutRef} style={{ position: 'absolute', inset: 0, zIndex: 4, background: '#fff', opacity: 0, pointerEvents: 'none' }} />
+
       {/* ── Base view HTML overlay (z=3): loser base + name ── */}
-      {phase === 'base_view' && showBaseHTML && (
+      {(phase === 'base_view' || phase === 'blast') && showBaseHTML && (
         <div style={{
           position: 'absolute', inset: 0, zIndex: 3,
           display: 'flex', flexDirection: 'column',

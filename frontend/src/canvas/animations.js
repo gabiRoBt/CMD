@@ -1,15 +1,23 @@
 /**
  * All canvas animation helpers are pure imperative functions.
  * They accept a CanvasRenderingContext2D and coordinates, run their own
- * setInterval loops, and clean up after themselves.
+ * rAF loops (vsync-aligned, nu setInterval), and clean up after themselves.
+ *
+ * Fix: setInterval(fn, 16) nu era sincronizat cu vsync-ul monitorului și
+ * producea frame tears/jitter. requestAnimationFrame cu delta-time rezolvă asta.
  */
 
 /** Parabolic projectile with trail + impact rings. */
 export function animProjectile(ctx, canvas, arena, sx, sy, tx, ty, col) {
   const trail = [];
   let tick = 0;
+  let rafId;
+  let lastTs = 0;
 
-  const iv = setInterval(() => {
+  const frame = (ts) => {
+    if (ts - lastTs < 16) { rafId = requestAnimationFrame(frame); return; }
+    lastTs = ts;
+
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     tick++;
 
@@ -39,11 +47,15 @@ export function animProjectile(ctx, canvas, arena, sx, sy, tx, ty, col) {
     ctx.fill();
     ctx.restore();
 
-    if (tick < 52) return;
+    if (tick < 52) { rafId = requestAnimationFrame(frame); return; }
 
-    clearInterval(iv);
+    // Impact rings phase
     let ring = 0;
-    const ex = setInterval(() => {
+    let ringLastTs = 0;
+    const ringFrame = (ts2) => {
+      if (ts2 - ringLastTs < 70) { rafId = requestAnimationFrame(ringFrame); return; }
+      ringLastTs = ts2;
+
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ring++;
       ctx.save();
@@ -54,9 +66,15 @@ export function animProjectile(ctx, canvas, arena, sx, sy, tx, ty, col) {
       ctx.globalAlpha  = Math.max(0, 1 - ring * 0.26);
       ctx.stroke();
       ctx.restore();
-      if (ring >= 4) { clearInterval(ex); ctx.clearRect(0, 0, canvas.width, canvas.height); }
-    }, 70);
-  }, 16);
+      if (ring >= 4) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        return;
+      }
+      rafId = requestAnimationFrame(ringFrame);
+    };
+    rafId = requestAnimationFrame(ringFrame);
+  };
+  rafId = requestAnimationFrame(frame);
 }
 
 /** Rocket: fiery projectile + dramatic multi-stage explosion. */
@@ -64,9 +82,14 @@ export function animRocket(ctx, canvas, arena, sx, sy, tx, ty, col) {
   const FIRE  = '#FF6A00';
   const trail = [];
   let tick = 0;
+  let rafId;
+  let lastTs = 0;
 
   // ── Phase 1: projectile flight ─────────────────────────────────────────
-  const iv = setInterval(() => {
+  const frame = (ts) => {
+    if (ts - lastTs < 16) { rafId = requestAnimationFrame(frame); return; }
+    lastTs = ts;
+
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     tick++;
 
@@ -100,11 +123,9 @@ export function animRocket(ctx, canvas, arena, sx, sy, tx, ty, col) {
     ctx.fill();
     ctx.restore();
 
-    if (tick < 52) return;
-    clearInterval(iv);
+    if (tick < 52) { rafId = requestAnimationFrame(frame); return; }
 
     // ── Phase 2: explosion ───────────────────────────────────────────────
-    // spawn debris particles
     const DEBRIS_COUNT = 22;
     const debris = Array.from({ length: DEBRIS_COUNT }, () => {
       const angle = Math.random() * Math.PI * 2;
@@ -115,7 +136,11 @@ export function animRocket(ctx, canvas, arena, sx, sy, tx, ty, col) {
     });
 
     let exTick = 0;
-    const ex = setInterval(() => {
+    let exLastTs = 0;
+    const exFrame = (ts2) => {
+      if (ts2 - exLastTs < 16) { rafId = requestAnimationFrame(exFrame); return; }
+      exLastTs = ts2;
+
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       exTick++;
 
@@ -171,25 +196,32 @@ export function animRocket(ctx, canvas, arena, sx, sy, tx, ty, col) {
       });
 
       if (exTick >= 65) {
-        clearInterval(ex);
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        return;
       }
-    }, 16);
-  }, 16);
+      rafId = requestAnimationFrame(exFrame);
+    };
+    rafId = requestAnimationFrame(exFrame);
+  };
+  rafId = requestAnimationFrame(frame);
 }
 
 /** Expanding hexagon rings at the player's own base (repair). */
 export function animRepair(ctx, canvas, cx, cy) {
   const col  = '#4A8C42';
   let tick   = 0;
+  let rafId;
+  let lastTs = 0;
 
-  const iv = setInterval(() => {
+  const frame = (ts) => {
+    if (ts - lastTs < 16) { rafId = requestAnimationFrame(frame); return; }
+    lastTs = ts;
+
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     tick++;
     const prog = tick / 65;
 
     if (prog > 1) {
-      clearInterval(iv);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       return;
     }
@@ -219,24 +251,32 @@ export function animRepair(ctx, canvas, cx, cy) {
     ctx.globalAlpha = (1 - prog) * 0.5;
     ctx.fill();
     ctx.globalAlpha = 1;
-  }, 16);
+
+    rafId = requestAnimationFrame(frame);
+  };
+  rafId = requestAnimationFrame(frame);
 }
 
 /** Expanding scan rings with directional lines from src toward dst. */
 export function animSonar(ctx, canvas, srcX, srcY, dstX, dstY, col) {
   const maxR      = Math.hypot(dstX - srcX, dstY - srcY) * 1.2;
   const baseAngle = Math.atan2(dstY - srcY, dstX - srcX);
-  let frame       = 0;
+  let frameN      = 0;
+  let rafId;
+  let lastTs = 0;
 
-  const iv = setInterval(() => {
+  const frame = (ts) => {
+    if (ts - lastTs < 16) { rafId = requestAnimationFrame(frame); return; }
+    lastTs = ts;
+
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    frame++;
+    frameN++;
 
     for (let w = 0; w < 4; w++) {
       const delay = w * 18;
-      if (frame < delay) continue;
+      if (frameN < delay) continue;
 
-      const prog = Math.min((frame - delay) / 75, 1);
+      const prog = Math.min((frameN - delay) / 75, 1);
       const r    = prog * maxR;
       const al   = (1 - prog) * 0.65;
 
@@ -260,6 +300,11 @@ export function animSonar(ctx, canvas, srcX, srcY, dstX, dstY, col) {
     }
 
     ctx.globalAlpha = 1;
-    if (frame > 75 + 3 * 18 + 15) { clearInterval(iv); ctx.clearRect(0, 0, canvas.width, canvas.height); }
-  }, 16);
+    if (frameN > 75 + 3 * 18 + 15) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      return;
+    }
+    rafId = requestAnimationFrame(frame);
+  };
+  rafId = requestAnimationFrame(frame);
 }

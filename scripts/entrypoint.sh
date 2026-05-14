@@ -1,14 +1,8 @@
 #!/bin/bash
 set -e
 
-if [ -z "$PLAYER_PUBLIC_KEY" ]; then
-    echo "ERROR: PLAYER_PUBLIC_KEY not set"; exit 1
-fi
-
-echo "$PLAYER_PUBLIC_KEY" > /home/player/.ssh/authorized_keys
-chmod 600 /home/player/.ssh/authorized_keys
-chown player:player /home/player/.ssh/authorized_keys
-ssh-keygen -A
+# SSH removed — terminal connects via docker exec directly.
+# The container is kept alive via sleep infinity at the end.
 
 SECRET_PASSWORD="${SECRET_PASSWORD:-$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 16)}"
 echo "$SECRET_PASSWORD" > /home/player/nuclearcodes.txt
@@ -17,6 +11,18 @@ chown player:player /home/player/nuclearcodes.txt
 
 echo -n "$SECRET_PASSWORD" | sha256sum | awk '{print $1}' > /etc/nuke_hash
 chmod 644 /etc/nuke_hash
+
+# Store raw password for the guardian process (root-only)
+echo -n "$SECRET_PASSWORD" > /etc/nuke_raw
+chmod 600 /etc/nuke_raw
+
+# Store base64 version for archive detection
+echo -n "$SECRET_PASSWORD" | base64 > /etc/nuke_raw_b64
+chmod 600 /etc/nuke_raw_b64
+
+# Strike counter file — starts at 0
+echo "0" > /tmp/.nuke_strikes
+chmod 666 /tmp/.nuke_strikes
 
 
 SEED="${ARENA_ID:-default}-${PLAYER_ROLE:-player}"
@@ -147,6 +153,52 @@ chown player:player /home/player/.on_infiltrate.sh
 
 
 # ── MOTD ─────────────────────────────────────────────────────────────────────
+if [ "$PLAYER_LANG" = "ro" ]; then
+cat > /home/player/.motd << 'EOF'
+
+    ╔══════════════════════════════════════════════╗
+    ║         CMD :: ARENA  —  FAZA DE SETUP       ║
+    ║                                              ║
+    ║   Protejează nuclearcodes.txt                ║
+    ║   Găsește    weapon_*.bin  →  ~/pouch/       ║
+    ║   Câștigă cu /bin/nuke_system <parola>       ║
+    ║                                              ║
+    ║   ⚠️  Ștergerea codurilor = 3 STRIKE = PIERZI ║
+    ║   Rulează  cmdhelp  pentru ghidul complet    ║
+    ╚══════════════════════════════════════════════╝
+
+EOF
+elif [ "$PLAYER_LANG" = "fr" ]; then
+cat > /home/player/.motd << 'EOF'
+
+    ╔══════════════════════════════════════════════╗
+    ║      CMD :: ARENA  —  PHASE DE PRÉPARATION   ║
+    ║                                              ║
+    ║   Protégez   nuclearcodes.txt                ║
+    ║   Trouvez    weapon_*.bin  →  ~/pouch/       ║
+    ║   Gagnez avec /bin/nuke_system <mdp>         ║
+    ║                                              ║
+    ║   ⚠️  Supprimer les codes = 3 STRIKES = PERDU ║
+    ║   Tapez  cmdhelp  pour le guide du jeu       ║
+    ╚══════════════════════════════════════════════╝
+
+EOF
+elif [ "$PLAYER_LANG" = "es" ]; then
+cat > /home/player/.motd << 'EOF'
+
+    ╔══════════════════════════════════════════════╗
+    ║      CMD :: ARENA  —  FASE DE PREPARACIÓN    ║
+    ║                                              ║
+    ║   Protege    nuclearcodes.txt                ║
+    ║   Encuentra  weapon_*.bin  →  ~/pouch/       ║
+    ║   Gana con   /bin/nuke_system <contraseña>   ║
+    ║                                              ║
+    ║   ⚠️  Borrar códigos = 3 STRIKES = PIERDES    ║
+    ║   Ejecuta  cmdhelp  para la guía del juego   ║
+    ╚══════════════════════════════════════════════╝
+
+EOF
+else
 cat > /home/player/.motd << 'EOF'
 
     ╔══════════════════════════════════════════════╗
@@ -156,19 +208,150 @@ cat > /home/player/.motd << 'EOF'
     ║   Find      weapon_*.bin  →  ~/pouch/        ║
     ║   Win with  /bin/nuke_system <password>      ║
     ║                                              ║
+    ║   ⚠️  Deleting codes = 3 STRIKES → YOU LOSE   ║
     ║   Run  cmdhelp  for the full game guide      ║
     ╚══════════════════════════════════════════════╝
 
 EOF
+fi
 chown player:player /home/player/.motd
 
 # ── cmdhelp: custom command — avoids collision with bash builtin 'help' ───────
+# First: inject PLAYER_LANG as a literal value so it survives into the player shell.
+# We CANNOT rely on the 'BASHRC' quoted heredoc to expand variables.
+echo "export PLAYER_LANG=${PLAYER_LANG:-en}" >> /home/player/.bashrc
+echo "export MANPAGER=cat"                   >> /home/player/.bashrc
 cat >> /home/player/.bashrc << 'BASHRC'
 
 # CMD :: Arena game guide
-# Named 'cmdhelp' to avoid shadowing the bash builtin 'help'
 cmdhelp() {
-    cat << 'GUIDE'
+    if [ "$PLAYER_LANG" = "ro" ]; then
+        cat << 'GUIDE'
+
+  ╔════════════════════════════════════════════════════════════════╗
+  ║                CMD :: ARENA  —  GHIDUL JOCULUI                 ║
+  ╠════════════════════════════════════════════════════════════════╣
+  ║  OBIECTIV                                                      ║
+  ║    Găsește parola inamicului și lansează atacul nuclear:       ║
+  ║      /bin/nuke_system <parola>                                 ║
+  ║    Parola se află în  nuclearcodes.txt  pe serverul inamic.    ║
+  ╠════════════════════════════════════════════════════════════════╣
+  ║  FAZA 1 — SETUP  (3 min 30 sec)                                ║
+  ║    Ești pe containerul TĂU.                                    ║
+  ║                                                                ║
+  ║    ASCUNDE-ȚI nuclearcodes.txt:                                ║
+  ║      mv nuclearcodes.txt .nume_ascuns                          ║
+  ║      cat nuclearcodes.txt | base64 > encoded.txt               ║
+  ║      tar czf codes.tar.gz nuclearcodes.txt                     ║
+  ║                                                                ║
+  ║    ⚠️  NU POȚI șterge codurile! 3 încercări = PIERZI.           ║
+  ║    Parola trebuie să rămână recuperabilă undeva.               ║
+  ║                                                                ║
+  ║    COLECTEAZĂ arme (deblochează abilități în UI):              ║
+  ║      find ~/ -name "weapon_*.bin" 2>/dev/null                  ║
+  ║      mv ~/path/to/weapon_scramble_*.bin ~/pouch/               ║
+  ║      Armele necolectate sunt ȘTERSE la finalul fazei.          ║
+  ╠════════════════════════════════════════════════════════════════╣
+  ║  FAZA 2 — INFILTRARE  (3 min)                                  ║
+  ║    Terminalul tău se conectează pe containerul INAMIC.         ║
+  ║                                                                ║
+  ║    Caută parola lor:                                           ║
+  ║      find / -name "nuclearcodes*" 2>/dev/null                  ║
+  ║      grep -r "nuclear" /home/player/ 2>/dev/null               ║
+  ║                                                                ║
+  ║    Lansează atacul ca să câștigi:                              ║
+  ║      /bin/nuke_system <parola_gasita>                          ║
+  ╠════════════════════════════════════════════════════════════════╣
+  ║  ABILITĂȚI  (activează din bara UI de jos)                     ║
+  ║                                                                ║
+  ║    🌀 SCRAMBLE   Schimbă comenzile terminalului 30s            ║
+  ║       (ex. ls devine rm). Harta se scrie în /tmp/scramble...   ║
+  ║    🚀 ROCKET     Blochează tastatura inamicului 15s            ║
+  ║    📡 SONAR      Dezvăluie fișierele + șterge foldere goale    ║
+  ║    🔧 REPAIR     Anulează ultimul atac în primele 5 secunde    ║
+  ╚════════════════════════════════════════════════════════════════╝
+
+GUIDE
+    elif [ "$PLAYER_LANG" = "fr" ]; then
+        cat << 'GUIDE'
+
+  ╔════════════════════════════════════════════════════════════════╗
+  ║                CMD :: ARENA  —  GUIDE DU JEU                   ║
+  ╠════════════════════════════════════════════════════════════════╣
+  ║  OBJECTIF                                                      ║
+  ║    Trouvez le mot de passe ennemi et lancez l'attaque :        ║
+  ║      /bin/nuke_system <mot_de_passe>                           ║
+  ║    Il se trouve dans  nuclearcodes.txt  chez l'ennemi.         ║
+  ╠════════════════════════════════════════════════════════════════╣
+  ║  PHASE 1 — PRÉPARATION  (3 min 30 sec)                         ║
+  ║    Vous êtes sur VOTRE conteneur.                              ║
+  ║                                                                ║
+  ║    CACHEZ votre nuclearcodes.txt:                              ║
+  ║      mv nuclearcodes.txt .nom_cache                            ║
+  ║      cat nuclearcodes.txt | base64 > encoded.txt               ║
+  ║      tar czf codes.tar.gz nuclearcodes.txt                     ║
+  ║                                                                ║
+  ║    ⚠️  Vous NE POUVEZ PAS le supprimer ! 3 essais = PERDU.      ║
+  ║                                                                ║
+  ║    RÉCUPÉREZ les armes (débloque les capacités) :              ║
+  ║      find ~/ -name "weapon_*.bin" 2>/dev/null                  ║
+  ║      mv ~/path/to/weapon_scramble_*.bin ~/pouch/               ║
+  ╠════════════════════════════════════════════════════════════════╣
+  ║  PHASE 2 — INFILTRATION  (3 min)                               ║
+  ║    Vous êtes sur le conteneur ENNEMI.                          ║
+  ║                                                                ║
+  ║    Cherchez leur mot de passe et lancez l'attaque :            ║
+  ║      /bin/nuke_system <mdp_trouve>                             ║
+  ╠════════════════════════════════════════════════════════════════╣
+  ║  CAPACITÉS                                                     ║
+  ║    🌀 SCRAMBLE   Mélange les commandes du terminal 30s         ║
+  ║    🚀 ROCKET     Bloque le clavier ennemi 15s                  ║
+  ║    📡 SONAR      Révèle les fichiers + supprime dossiers vides ║
+  ║    🔧 REPAIR     Annule la dernière attaque (délai 5s)         ║
+  ╚════════════════════════════════════════════════════════════════╝
+
+GUIDE
+    elif [ "$PLAYER_LANG" = "es" ]; then
+        cat << 'GUIDE'
+
+  ╔════════════════════════════════════════════════════════════════╗
+  ║                CMD :: ARENA  —  GUÍA DEL JUEGO                 ║
+  ╠════════════════════════════════════════════════════════════════╣
+  ║  OBJETIVO                                                      ║
+  ║    Encuentra la contraseña y lanza el ataque nuclear:          ║
+  ║      /bin/nuke_system <contraseña>                             ║
+  ║    La contraseña está en  nuclearcodes.txt  en el enemigo.     ║
+  ╠════════════════════════════════════════════════════════════════╣
+  ║  FASE 1 — PREPARACIÓN  (3 min 30 sec)                          ║
+  ║    Estás en TU propio contenedor.                              ║
+  ║                                                                ║
+  ║    OCULTA tu nuclearcodes.txt:                                 ║
+  ║      mv nuclearcodes.txt .nombre_oculto                        ║
+  ║      cat nuclearcodes.txt | base64 > encoded.txt               ║
+  ║      tar czf codes.tar.gz nuclearcodes.txt                     ║
+  ║                                                                ║
+  ║    ⚠️  ¡NO PUEDES borrarla! 3 intentos = PIERDES.               ║
+  ║                                                                ║
+  ║    RECOLECTA armas (desbloquea habilidades):                   ║
+  ║      find ~/ -name "weapon_*.bin" 2>/dev/null                  ║
+  ║      mv ~/path/to/weapon_scramble_*.bin ~/pouch/               ║
+  ╠════════════════════════════════════════════════════════════════╣
+  ║  FASE 2 — INFILTRACIÓN  (3 min)                                ║
+  ║    Tu terminal se conecta al contenedor ENEMIGO.               ║
+  ║                                                                ║
+  ║    Busca su contraseña y lanza el misil:                       ║
+  ║      /bin/nuke_system <contraseña_encontrada>                  ║
+  ╠════════════════════════════════════════════════════════════════╣
+  ║  HABILIDADES                                                   ║
+  ║    🌀 SCRAMBLE   Mezcla los comandos del terminal 30s          ║
+  ║    🚀 ROCKET     Bloquea el teclado enemigo 15s                ║
+  ║    📡 SONAR      Revela archivos + borra carpetas vacías       ║
+  ║    🔧 REPAIR     Anula el último ataque (ventana de 5s)        ║
+  ╚════════════════════════════════════════════════════════════════╝
+
+GUIDE
+    else
+        cat << 'GUIDE'
 
   ╔════════════════════════════════════════════════════════════════╗
   ║                CMD :: ARENA  —  GAME GUIDE                     ║
@@ -184,52 +367,272 @@ cmdhelp() {
   ║    HIDE your nuclearcodes.txt:                                 ║
   ║      mv nuclearcodes.txt .hidden_name                          ║
   ║      cat nuclearcodes.txt | base64 > encoded.txt               ║
-  ║      cat nuclearcodes.txt >> logs/app.log && rm nuclearcodes   ║
+  ║      tar czf codes.tar.gz nuclearcodes.txt                     ║
+  ║                                                                ║
+  ║    ⚠️  You CANNOT delete the codes! 3 attempts = YOU LOSE.      ║
   ║                                                                ║
   ║    COLLECT weapon files (unlock abilities in the UI footer):   ║
   ║      find ~/ -name "weapon_*.bin" 2>/dev/null                  ║
   ║      mv ~/path/to/weapon_scramble_*.bin ~/pouch/               ║
-  ║      Each weapon in ~/pouch = 1 ability unlocked.              ║
-  ║      Uncollected weapons are DELETED at phase transition.      ║
   ╠════════════════════════════════════════════════════════════════╣
   ║  PHASE 2 — INFILTRATE  (3 min)                                 ║
   ║    Your terminal now connects to the ENEMY container.          ║
   ║                                                                ║
-  ║    Search for their password:                                  ║
-  ║      find / -name "nuclearcodes*" 2>/dev/null                  ║
-  ║      grep -r "nuclear" /home/player/ 2>/dev/null               ║
-  ║      ls -la /home/player/ && cat nuclearcodes.txt              ║
-  ║                                                                ║
-  ║    Launch the nuke to win:                                     ║
+  ║    Search for their password and launch the nuke:              ║
   ║      /bin/nuke_system <found_password>                         ║
   ╠════════════════════════════════════════════════════════════════╣
   ║  ABILITIES  (activate from the web UI footer bar)              ║
-  ║                                                                ║
   ║    🌀 SCRAMBLE   Remaps YOUR terminal commands randomly 30s    ║
-  ║       When hit: type commands as normal, but execution will    ║
-  ║       be different (e.g. ls → rm, cd → find).                  ║
-  ║       A map file is written to /tmp/scramble_map.txt           ║
-  ║       if you get hit — use it to navigate the chaos.           ║
-  ║       Repair: cancels scramble immediately.                    ║
-  ║                                                                ║
   ║    🚀 ROCKET     Blocks ALL your keyboard input for 15s        ║
-  ║       Repair: unblocks immediately.                            ║
-  ║                                                                ║
   ║    📡 SONAR      Reveals enemy files + deletes empty dirs      ║
-  ║       (cannot be repaired)                                     ║
-  ║                                                                ║
-  ║    🔧 REPAIR     Counters last received attack                 ║
-  ║       Must be used within 5 seconds of the attack.             ║
-  ╠════════════════════════════════════════════════════════════════╣
-  ║  TIPS                                                          ║
-  ║    • REPAIR works on scramble and rocket, not sonar            ║
-  ║    • SCRAMBLE: check /tmp/scramble_map.txt for the mapping     ║
-  ║    • Collect ALL weapons before phase ends — they disappear!   ║
-  ║    • SONAR is permanent — protect directories that matter      ║
+  ║    🔧 REPAIR     Counters last received attack (5s window)     ║
   ╚════════════════════════════════════════════════════════════════╝
 
 GUIDE
+    fi
 }
+
+# ── Nuclear Codes Protection — 3-strike system ──────────────────────────────
+# Checks if removing a file would destroy the ONLY remaining copy of the
+# nuclear password. If so, increments the strike counter. 3 strikes = auto-loss.
+_nuke_check_password_exists_after() {
+    local PW
+    PW=$(cat /etc/nuke_raw 2>/dev/null) || return 0
+    [ -z "$PW" ] && return 0
+
+    local B64
+    B64=$(cat /etc/nuke_raw_b64 2>/dev/null)
+
+    # Check plaintext
+    grep -rq --include='*' "$PW" /home/player/ 2>/dev/null && return 0
+    # Check base64
+    [ -n "$B64" ] && grep -rq --include='*' "$B64" /home/player/ 2>/dev/null && return 0
+    # Check archives exist
+    find /home/player -type f \( -name '*.tar' -o -name '*.tar.gz' -o -name '*.tgz' \
+        -o -name '*.gz' -o -name '*.zip' -o -name '*.bz2' -o -name '*.xz' \
+        -o -name '*.7z' -o -name '*.rar' \) 2>/dev/null | grep -q . && return 0
+
+    return 1
+}
+
+_nuke_strike() {
+    local strikes
+    strikes=$(cat /tmp/.nuke_strikes 2>/dev/null || echo "0")
+    strikes=$((strikes + 1))
+    echo "$strikes" > /tmp/.nuke_strikes
+    local remaining=$((3 - strikes))
+
+    # W=59 chars between the two ║ borders
+    # printf "%-59s" pads to 59 chars — guarantees right border alignment
+    local W=59
+    local BOX_TOP="  ╔═══════════════════════════════════════════════════════════╗"
+    local BOX_BOT="  ╚═══════════════════════════════════════════════════════════╝"
+    local BOX_BLK
+    printf -v BOX_BLK "  ║%-${W}s║" " "
+
+    echo ""
+    echo "$BOX_TOP"
+
+    if [ "$PLAYER_LANG" = "ro" ]; then
+        printf "  ║%-${W}s║\n" "  ⛔  ÎNCĂLCAREA INTEGRITĂȚII — CODURI DISTRUSE"
+        echo "$BOX_BLK"
+        if [ "$remaining" -gt 0 ]; then
+            printf "  ║%-${W}s║\n" "  ⚠️  STRIKE $strikes/3 — mai ai $remaining avertisment(e)"
+            echo "$BOX_BLK"
+            printf "  ║%-${W}s║\n" "  Codurile au fost RESTAURATE."
+            printf "  ║%-${W}s║\n" "  Poți MUTA, COPIA, ARHIVA — dar nu șterge."
+            printf "  ║%-${W}s║\n" "  Următoarea încălcare: strike $((strikes + 1))/3"
+        else
+            printf "  ║%-${W}s║\n" "  ☠️  STRIKE 3/3 — ÎNFRÂNGERE AUTOMATĂ"
+            echo "$BOX_BLK"
+            printf "  ║%-${W}s║\n" "  Ai fost descalificat pentru distrugerea codurilor."
+        fi
+    elif [ "$PLAYER_LANG" = "fr" ]; then
+        printf "  ║%-${W}s║\n" "  ⛔  VIOLATION D'INTÉGRITÉ — CODES DÉTRUITS"
+        echo "$BOX_BLK"
+        if [ "$remaining" -gt 0 ]; then
+            printf "  ║%-${W}s║\n" "  ⚠️  STRIKE $strikes/3 — $remaining avertissement(s) restant(s)"
+            echo "$BOX_BLK"
+            printf "  ║%-${W}s║\n" "  Les codes ont été RESTAURÉS."
+            printf "  ║%-${W}s║\n" "  Vous pouvez DÉPLACER, COPIER, ARCHIVER — pas supprimer."
+            printf "  ║%-${W}s║\n" "  Prochaine violation : strike $((strikes + 1))/3"
+        else
+            printf "  ║%-${W}s║\n" "  ☠️  STRIKE 3/3 — DÉFAITE AUTOMATIQUE"
+            echo "$BOX_BLK"
+            printf "  ║%-${W}s║\n" "  Disqualifié pour avoir détruit les codes."
+        fi
+    elif [ "$PLAYER_LANG" = "es" ]; then
+        printf "  ║%-${W}s║\n" "  ⛔  VIOLACIÓN — CÓDIGOS NUCLEARES DESTRUIDOS"
+        echo "$BOX_BLK"
+        if [ "$remaining" -gt 0 ]; then
+            printf "  ║%-${W}s║\n" "  ⚠️  STRIKE $strikes/3 — $remaining advertencia(s) restante(s)"
+            echo "$BOX_BLK"
+            printf "  ║%-${W}s║\n" "  Los códigos han sido RESTAURADOS."
+            printf "  ║%-${W}s║\n" "  Puedes MOVER, COPIAR o ARCHIVAR — pero no borrar."
+            printf "  ║%-${W}s║\n" "  Próxima violación: strike $((strikes + 1))/3"
+        else
+            printf "  ║%-${W}s║\n" "  ☠️  STRIKE 3/3 — DERROTA AUTOMÁTICA"
+            echo "$BOX_BLK"
+            printf "  ║%-${W}s║\n" "  Descalificado por destruir los códigos nucleares."
+        fi
+    else
+        printf "  ║%-${W}s║\n" "  ⛔  INTEGRITY VIOLATION — NUCLEAR CODES DESTROYED"
+        echo "$BOX_BLK"
+        if [ "$remaining" -gt 0 ]; then
+            printf "  ║%-${W}s║\n" "  ⚠️  STRIKE $strikes/3 — $remaining warning(s) remaining"
+            echo "$BOX_BLK"
+            printf "  ║%-${W}s║\n" "  The codes have been RESTORED."
+            printf "  ║%-${W}s║\n" "  You may MOVE, COPY, or ARCHIVE them — not delete."
+            printf "  ║%-${W}s║\n" "  Next violation: strike $((strikes + 1))/3"
+        else
+            printf "  ║%-${W}s║\n" "  ☠️  STRIKE 3/3 — AUTOMATIC DEFEAT"
+            echo "$BOX_BLK"
+            printf "  ║%-${W}s║\n" "  You have been disqualified for destroying nuclear codes."
+        fi
+    fi
+
+    echo "$BOX_BOT"
+    echo ""
+
+    if [ "$remaining" -le 0 ]; then
+        # Write violation sentinel — server picks this up as a loss
+        echo "$(date)" > /tmp/player_violation
+        return 1
+    fi
+    return 0
+}
+
+# Wrapper for rm — intercepts deletion of files containing the password
+rm() {
+    # Run the actual rm first
+    command rm "$@" 2>/dev/null
+    local rc=$?
+
+    # Now check if the password still exists somewhere
+    if ! _nuke_check_password_exists_after; then
+        # Password is gone — record a strike and restore it
+        local PW
+        PW=$(cat /etc/nuke_raw 2>/dev/null)
+        if [ -n "$PW" ]; then
+            echo "$PW" > /home/player/nuclearcodes.txt
+            chmod 644 /home/player/nuclearcodes.txt
+        fi
+        _nuke_strike
+        return $?
+    fi
+    return $rc
+}
+
+# Wrapper for shred
+shred() {
+    command shred "$@" 2>/dev/null
+    if ! _nuke_check_password_exists_after; then
+        local PW
+        PW=$(cat /etc/nuke_raw 2>/dev/null)
+        if [ -n "$PW" ]; then
+            echo "$PW" > /home/player/nuclearcodes.txt
+            chmod 644 /home/player/nuclearcodes.txt
+        fi
+        _nuke_strike
+        return $?
+    fi
+}
+
+# Wrapper for unlink
+unlink() {
+    command unlink "$@" 2>/dev/null
+    if ! _nuke_check_password_exists_after; then
+        local PW
+        PW=$(cat /etc/nuke_raw 2>/dev/null)
+        if [ -n "$PW" ]; then
+            echo "$PW" > /home/player/nuclearcodes.txt
+            chmod 644 /home/player/nuclearcodes.txt
+        fi
+        _nuke_strike
+        return $?
+    fi
+}
+
+# ── Exit / Surrender control ────────────────────────────────────────────────
+if [ "$ARENA_TYPE" = "competitive" ]; then
+    exit() {
+        local W=59
+        local BOX_TOP="  ╔═══════════════════════════════════════════════════════════╗"
+        local BOX_BOT="  ╚═══════════════════════════════════════════════════════════╝"
+        local BOX_BLK
+        printf -v BOX_BLK "  ║%-${W}s║" " "
+
+        echo ""
+        echo "$BOX_TOP"
+        if [ "$PLAYER_LANG" = "ro" ]; then
+            printf "  ║%-${W}s║\n" "  ⚠️   MECI COMPETITIV — AVERTISMENT DE PREDARE"
+            echo "$BOX_BLK"
+            printf "  ║%-${W}s║\n" "  Ieșirea va conta ca o ÎNFRÂNGERE."
+            printf "  ║%-${W}s║\n" "  Scorul tău ELO va fi penalizat."
+            echo "$BOX_BLK"
+            printf "  ║%-${W}s║\n" "  Scrie 'surrender' pentru a confirma, sau Enter anulează."
+        elif [ "$PLAYER_LANG" = "fr" ]; then
+            printf "  ║%-${W}s║\n" "  ⚠️   MATCH COMPÉTITIF — AVERTISSEMENT D'ABANDON"
+            echo "$BOX_BLK"
+            printf "  ║%-${W}s║\n" "  Quitter comptera comme une DÉFAITE."
+            printf "  ║%-${W}s║\n" "  Votre score ELO sera pénalisé."
+            echo "$BOX_BLK"
+            printf "  ║%-${W}s║\n" "  Tapez 'surrender' pour confirmer, ou Entrée annule."
+        elif [ "$PLAYER_LANG" = "es" ]; then
+            printf "  ║%-${W}s║\n" "  ⚠️   PARTIDA COMPETITIVA — ADVERTENCIA DE RENDICIÓN"
+            echo "$BOX_BLK"
+            printf "  ║%-${W}s║\n" "  Salir contará como una DERROTA."
+            printf "  ║%-${W}s║\n" "  Tu puntuación ELO será penalizada."
+            echo "$BOX_BLK"
+            printf "  ║%-${W}s║\n" "  Escribe 'surrender' para confirmar, o Enter para anular."
+        else
+            printf "  ║%-${W}s║\n" "  ⚠️   COMPETITIVE MATCH — SURRENDER WARNING"
+            echo "$BOX_BLK"
+            printf "  ║%-${W}s║\n" "  Exiting will count as a LOSS."
+            printf "  ║%-${W}s║\n" "  Your ELO rating will be penalized."
+            echo "$BOX_BLK"
+            printf "  ║%-${W}s║\n" "  Type 'surrender' to confirm, or press Enter to cancel."
+        fi
+        echo "$BOX_BOT"
+        echo ""
+        read -p "  > " confirm
+        if [ "$confirm" = "surrender" ]; then
+            echo ""
+            if [ "$PLAYER_LANG" = "ro" ]; then
+                echo "  ☠️  Te-ai predat. GG."
+            elif [ "$PLAYER_LANG" = "fr" ]; then
+                echo "  ☠️  Vous avez abandonné. GG."
+            elif [ "$PLAYER_LANG" = "es" ]; then
+                echo "  ☠️  Te has rendido. GG."
+            else
+                echo "  ☠️  You have surrendered. GG."
+            fi
+            echo "$(date)" > /tmp/player_surrendered
+            sleep 0.5
+            builtin exit 0
+        else
+            if [ "$PLAYER_LANG" = "ro" ]; then
+                echo "  Predare anulată. Continuă lupta!"
+            elif [ "$PLAYER_LANG" = "fr" ]; then
+                echo "  Abandon annulé. Continuez le combat !"
+            elif [ "$PLAYER_LANG" = "es" ]; then
+                echo "  Rendición cancelada. ¡Sigue luchando!"
+            else
+                echo "  Surrender cancelled. Keep fighting!"
+            fi
+        fi
+    }
+    surrender() {
+        echo "$(date)" > /tmp/player_surrendered
+        echo ""
+        echo "  ☠️  You have surrendered. GG."
+        sleep 0.5
+        builtin exit 0
+    }
+else
+    # Casual — exit works normally, no penalty
+    true
+fi
 
 [ -f ~/.motd ] && cat ~/.motd
 [ -f ~/.bash_aliases ] && source ~/.bash_aliases
@@ -237,6 +640,80 @@ BASHRC
 
 chown player:player /home/player/.bashrc
 
+# ── Background Password Guardian (root-owned safety net) ─────────────────────
+# Runs every 3 seconds. If the password is completely gone from /home/player/
+# (not found in plaintext, base64, or archives), restore it and log a strike.
+# This catches bypasses like /bin/rm, python, perl, etc.
+cat > /usr/local/bin/nuke_guardian.sh << 'GUARDIAN'
+#!/bin/bash
+PW=$(cat /etc/nuke_raw 2>/dev/null)
+B64=$(cat /etc/nuke_raw_b64 2>/dev/null)
+[ -z "$PW" ] && exit 0
+
+while true; do
+    sleep 3
+
+    # Skip if game is already over
+    [ -f /tmp/nuke_success ] && exit 0
+    [ -f /tmp/player_violation ] && exit 0
+    [ -f /tmp/player_surrendered ] && exit 0
+
+    # Check plaintext
+    grep -rq "$PW" /home/player/ 2>/dev/null && continue
+    # Check base64
+    [ -n "$B64" ] && grep -rq "$B64" /home/player/ 2>/dev/null && continue
+    # Check archives
+    find /home/player -type f \( -name '*.tar' -o -name '*.tar.gz' -o -name '*.tgz' \
+        -o -name '*.gz' -o -name '*.zip' -o -name '*.bz2' -o -name '*.xz' \
+        -o -name '*.7z' \) 2>/dev/null | grep -q . && continue
+
+    # Password is completely gone — restore + strike
+    echo "$PW" > /home/player/nuclearcodes.txt
+    chmod 644 /home/player/nuclearcodes.txt
+    chown player:player /home/player/nuclearcodes.txt
+
+    # Increment strike counter
+    strikes=$(cat /tmp/.nuke_strikes 2>/dev/null || echo "0")
+    strikes=$((strikes + 1))
+    echo "$strikes" > /tmp/.nuke_strikes
+    remaining=$((3 - strikes))
+
+    # Print warning to ALL player terminals
+    for pts in /dev/pts/*; do
+        [ "$pts" = "/dev/pts/ptmx" ] && continue
+        {
+            echo ""
+            echo "  ╔═══════════════════════════════════════════════════════════╗"
+            echo "  ║  ⛔  INTEGRITY VIOLATION — NUCLEAR CODES DESTROYED        ║"
+            echo "  ║                                                           ║"
+            if [ "$remaining" -gt 0 ]; then
+                echo "  ║  ⚠️  STRIKE $strikes/3 — $remaining warning(s) remaining   ║"
+                echo "  ║                                                           ║"
+                echo "  ║  The codes have been RESTORED.                            ║"
+                echo "  ║  You may MOVE, COPY, or ARCHIVE them — not delete.        ║"
+            else
+                echo "  ║  ☠️  STRIKE 3/3 — AUTOMATIC DEFEAT                        ║"
+                echo "  ║                                                           ║"
+                echo "  ║  Disqualified for destroying nuclear codes.               ║"
+            fi
+            echo "  ╚═══════════════════════════════════════════════════════════╝"
+            echo ""
+        } > "$pts" 2>/dev/null
+    done
+
+    if [ "$remaining" -le 0 ]; then
+        echo "$(date)" > /tmp/player_violation
+        exit 0
+    fi
+done
+GUARDIAN
+chmod 755 /usr/local/bin/nuke_guardian.sh
+
 echo "=== CMD Arena container started ==="
-echo "Arena: $ARENA_ID | Role: $PLAYER_ROLE"
-exec /usr/sbin/sshd -D -e
+echo "Arena: $ARENA_ID | Role: $PLAYER_ROLE | Type: ${ARENA_TYPE:-casual}"
+# Signal to Go that setup is complete
+touch /tmp/.ready
+# Start guardian in background, then keep container alive
+/usr/local/bin/nuke_guardian.sh &
+# Keep container alive — players connect via docker exec
+exec sleep infinity

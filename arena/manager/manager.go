@@ -1,6 +1,9 @@
 package manager
 
-import "time"
+import (
+	"sync"
+	"time"
+)
 
 type PlayerRole string
 
@@ -19,7 +22,7 @@ const (
 	PhaseFinished   Phase = "finished"
 )
 
-// AbilityTokens — hash-uri random, injectate ca env vars în container.
+// AbilityTokens — random hashes, injected as env vars into the container.
 type AbilityTokens struct {
 	Scramble string
 	Repair   string
@@ -30,13 +33,12 @@ type AbilityTokens struct {
 type Player struct {
 	ID          string
 	Role        PlayerRole
-	PublicKey   string
 	ContainerID string
-	SSHPort     int
 	Ready       bool
 	Abilities   []string  // validate la final de setup
 	LastAttack  string    // ultima abilitate primită
 	AttackAt    time.Time // timestamp pentru repair kit (5s window)
+	Lang        string    // UI language for the container text
 }
 
 type Arena struct {
@@ -60,6 +62,10 @@ type Arena struct {
 	// DB user IDs; 0 means anonymous / guest
 	HostUserID  int
 	GuestUserID int
+
+	// finishOnce ensures only one goroutine (timer or winner-watcher)
+	// can trigger the game_over sequence.
+	finishOnce sync.Once
 }
 
 type ArenaView struct {
@@ -74,7 +80,7 @@ type ArenaView struct {
 	GuestReady bool   `json:"guest_ready"`
 }
 
-func NewArena(arenaID, hostPlayerID, name, arenaType string) *Arena {
+func NewArena(arenaID, hostPlayerID, name, arenaType, lang string) *Arena {
 	if name == "" {
 		name = arenaID
 	}
@@ -85,7 +91,7 @@ func NewArena(arenaID, hostPlayerID, name, arenaType string) *Arena {
 		ID:             arenaID,
 		Name:           name,
 		Type:           arenaType,
-		Host:           &Player{ID: hostPlayerID, Role: RoleHost},
+		Host:           &Player{ID: hostPlayerID, Role: RoleHost, Lang: lang},
 		Phase:          PhaseWaiting,
 		CreatedAt:      time.Now(),
 		SetupDuration:  210 * time.Second,
@@ -93,8 +99,8 @@ func NewArena(arenaID, hostPlayerID, name, arenaType string) *Arena {
 	}
 }
 
-func (a *Arena) JoinGuest(guestPlayerID string) {
-	a.Guest = &Player{ID: guestPlayerID, Role: RoleGuest}
+func (a *Arena) JoinGuest(guestPlayerID, lang string) {
+	a.Guest = &Player{ID: guestPlayerID, Role: RoleGuest, Lang: lang}
 }
 
 func (a *Arena) BothReady() bool {

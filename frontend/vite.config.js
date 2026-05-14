@@ -3,6 +3,10 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
+  build: {
+    outDir: '../static',   // output direct în directorul servit de Go
+    emptyOutDir: true,
+  },
   server: {
     allowedHosts: true,
     proxy: {

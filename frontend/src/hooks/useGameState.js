@@ -40,7 +40,7 @@ export function useGameState({ startCountdown, stopCountdown, onGameStart, initi
       case 'phase_change':
         setPhase(ev.payload.phase);
         if (ev.payload.phase === PHASE.INFILTRATE) startCountdown(INFILTRATE_SECONDS);
-        if (ev.payload.phase === PHASE.SETUP || ev.payload.phase === 'setup') startCountdown(SETUP_SECONDS);
+        if (ev.payload.phase === PHASE.SETUP) startCountdown(SETUP_SECONDS);
         break;
 
       case 'pouch_result':

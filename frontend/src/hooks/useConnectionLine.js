@@ -4,6 +4,9 @@ import { ANTENNA_FRAC } from '../constants/skins';
 /**
  * Draws an animated dashed Bezier arc from the terminal window's side wall
  * to the connected base's antenna. Cancels itself on game over.
+ *
+ * Fix latență: getBoundingClientRect() la 60fps forțează layout reflow continuu
+ * pe main thread. Throttle la ~30fps reduce presiunea fără a afecta calitatea.
  */
 export function useConnectionLine({ lineCanvasRef, termWinRef, skin, phase, gameOver }) {
   const rafRef = useRef(null);
@@ -33,6 +36,7 @@ export function useConnectionLine({ lineCanvasRef, termWinRef, skin, phase, game
 
     const isEnemy = phase === 'infiltrate';
     let offset    = 0;
+    let lastTs    = 0; // throttle timestamp
 
     const getAntenna = (side) => {
       const el = document.querySelector(side === 'left' ? '.left-base-pos' : '.right-base-pos');
@@ -42,19 +46,33 @@ export function useConnectionLine({ lineCanvasRef, termWinRef, skin, phase, game
       return { x: rect.left + rect.width * frac.x, y: rect.top + rect.height * frac.y };
     };
 
-    const draw = () => {
+    const draw = (ts) => {
+      // Throttle la ~30fps — reduce reflow-urile cauzate de getBoundingClientRect
+      if (ts - lastTs < 33) {
+        rafRef.current = requestAnimationFrame(draw);
+        return;
+      }
+      lastTs = ts;
+
       const ctx     = canvas.getContext('2d');
       const termWin = termWinRef.current;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      if (!termWin) { rafRef.current = requestAnimationFrame(draw); return; }
+      if (!termWin) {
+        // No terminal window yet — skip drawing but keep the loop alive
+        rafRef.current = requestAnimationFrame(draw);
+        return;
+      }
 
       const tRect = termWin.getBoundingClientRect();
       const sx    = isEnemy ? tRect.right  : tRect.left;
       const sy    = tRect.top + tRect.height / 2;
       const ant   = getAntenna(isEnemy ? 'right' : 'left');
 
-      if (!ant) { rafRef.current = requestAnimationFrame(draw); return; }
+      if (!ant) {
+        rafRef.current = requestAnimationFrame(draw);
+        return;
+      }
 
       const color = isEnemy ? '#C0704A' : '#00ff41';
       const cpx   = (sx + ant.x) / 2;

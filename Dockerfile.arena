@@ -1,24 +1,33 @@
 # Dockerfile.arena
 # Image used for game containers
-# Build: docker build -f Dockerfile.arena -t nuclearhide-arena:latest .
+# Build: docker build -f Dockerfile.arena -t cmd-arena:latest .
 
 FROM debian:bookworm-slim
 
 # Set terminal environment for proper text editor rendering
 ENV TERM=xterm-256color
 
-# Install only what is necessary for SSH and game utilities
-# Removed 'vi' as it is a virtual package; 'vim' provides the 'vi' command
+# Restore man pages stripped by debian-slim
+RUN rm -f /etc/dpkg/dpkg.cfg.d/docker
+
+# Install only what is necessary for the game
+# openssh-server removed — terminal connects via docker exec
 RUN apt-get update && apt-get install -y \
-    openssh-server \
+    man-db \
+    manpages \
     bash \
     coreutils \
     findutils \
     grep \
     vim \
     nano \
+    python3 \
     dos2unix \
-    && rm -rf /var/lib/apt/lists/*
+    procps \
+    && apt-get install --reinstall -y \
+        bash coreutils findutils grep \
+    && rm -rf /var/lib/apt/lists/* \
+    && mandb -q
 
 # Create the user the player connects with
 RUN useradd -m -s /bin/bash player && \
@@ -38,11 +47,7 @@ RUN dos2unix /bin/nuke_system /entrypoint.sh && \
     chmod +x /bin/nuke_system /entrypoint.sh && \
     chown root:root /bin/nuke_system
 
-# SSH Configuration: disable password authentication
-RUN mkdir -p /run/sshd && \
-    sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config && \
-    sed -i 's/#PubkeyAuthentication yes/PubkeyAuthentication yes/' /etc/ssh/sshd_config
-
-EXPOSE 22
+# Nu mai expunem port SSH — conexiunea e via docker exec
+# EXPOSE 22 eliminat
 
 ENTRYPOINT ["/entrypoint.sh"]

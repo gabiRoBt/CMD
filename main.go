@@ -31,7 +31,6 @@ func main() {
 		log.Fatalf("EROARE: %v\nAsigură-te că Docker rulează.", err)
 	}
 	fmt.Println("✓ Conectat la Docker")
-	fmt.Println("✓ MasterKey SSH generată")
 
 	hub := ws.NewHub()
 	go hub.Run()

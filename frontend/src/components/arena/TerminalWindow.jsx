@@ -5,7 +5,7 @@ import { useScramble  } from '../../hooks/useScramble';
 import { useRocket    } from '../../hooks/useRocket';
 
 export const TerminalWindow = forwardRef(function TerminalWindow(
-  { arenaID, playerID, phase, t, hidden },
+  { arenaID, playerID, phase, t },
   ref,
 ) {
   const bodyRef     = useRef(null);
@@ -37,7 +37,7 @@ export const TerminalWindow = forwardRef(function TerminalWindow(
     <div
       id="terminal-win"
       ref={internalRef}
-      style={{ display: hidden ? 'none' : 'flex' }}
+      style={{ display: 'flex' }}
     >
       <div className="term-bubble-tail-left"  style={{ display: isEnemy ? 'none'  : 'block' }}/>
       <div className="term-bubble-tail-right" style={{ display: isEnemy ? 'block' : 'none'  }}/>

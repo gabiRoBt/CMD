@@ -5,7 +5,9 @@ import (
 	"CMD/arena/manager"
 	"CMD/arena/ws"
 	"encoding/json"
+	"log"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -23,17 +25,22 @@ func (s *Server) handleCreateArenaAuth(w http.ResponseWriter, r *http.Request, c
 	var req struct {
 		Name string `json:"name"`
 		Type string `json:"type"` // "casual" or "competitive"
+		Lang string `json:"lang"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		req.Name = c.Username + "'s Arena"
 		req.Type = "casual"
+		req.Lang = "en"
+	}
+	if req.Lang == "" {
+		req.Lang = "en"
 	}
 	if c.IsGuest && req.Type == "competitive" {
 		http.Error(w, "guests cannot create competitive arenas", 403)
 		return
 	}
 
-	a, err := s.manager.CreateArena(c.Username, req.Name, req.Type, c.UserID)
+	a, err := s.manager.CreateArena(c.Username, req.Name, req.Type, req.Lang, c.UserID)
 	if err != nil {
 		http.Error(w, err.Error(), 400)
 		return
@@ -49,10 +56,14 @@ func (s *Server) handleJoinArenaAuth(w http.ResponseWriter, r *http.Request, c *
 	}
 	var req struct {
 		ArenaID string `json:"arena_id"`
+		Lang    string `json:"lang"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid JSON", 400)
 		return
+	}
+	if req.Lang == "" {
+		req.Lang = "en"
 	}
 
 	if a, ok := s.manager.GetArena(req.ArenaID); ok {
@@ -62,7 +73,7 @@ func (s *Server) handleJoinArenaAuth(w http.ResponseWriter, r *http.Request, c *
 		}
 	}
 
-	if _, err := s.manager.JoinArena(req.ArenaID, c.Username, c.UserID); err != nil {
+	if _, err := s.manager.JoinArena(req.ArenaID, c.Username, req.Lang, c.UserID); err != nil {
 		http.Error(w, err.Error(), 400)
 		return
 	}
@@ -82,6 +93,10 @@ func (s *Server) handleSetReady(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid JSON", 400)
 		return
+	}
+	// Validate player identity via JWT if available
+	if c := extractClaims(r); c != nil {
+		req.PlayerID = c.Username
 	}
 	a, err := s.manager.SetReady(req.ArenaID, req.PlayerID)
 	if err != nil {
@@ -112,6 +127,31 @@ func (s *Server) handleSetReady(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]string{"status": "ok", "phase": string(a.Phase)})
 }
 
+func (s *Server) handleSetUnready(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method Not Allowed", 405)
+		return
+	}
+	var req struct {
+		ArenaID  string `json:"arena_id"`
+		PlayerID string `json:"player_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid JSON", 400)
+		return
+	}
+	if c := extractClaims(r); c != nil {
+		req.PlayerID = c.Username
+	}
+	a, err := s.manager.SetUnready(req.ArenaID, req.PlayerID)
+	if err != nil {
+		http.Error(w, err.Error(), 400)
+		return
+	}
+	s.broadcastArenaList()
+	writeJSON(w, map[string]string{"status": "ok", "phase": string(a.Phase)})
+}
+
 func (s *Server) handleLeaveArena(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method Not Allowed", 405)
@@ -124,6 +164,9 @@ func (s *Server) handleLeaveArena(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid JSON", 400)
 		return
+	}
+	if c := extractClaims(r); c != nil {
+		req.PlayerID = c.Username
 	}
 	a, ok := s.manager.GetArena(req.ArenaID)
 	if !ok {
@@ -141,6 +184,9 @@ func (s *Server) handleLeaveArena(w http.ResponseWriter, r *http.Request) {
 		s.manager.DeleteArena(req.ArenaID)
 	} else if a.Guest != nil && a.Guest.ID == req.PlayerID {
 		a.Guest = nil
+		// Reset host ready so the match can't auto-start when a new guest joins
+		a.Host.Ready = false
+		log.Printf("[Arena %s] Guest %s left, host ready reset", req.ArenaID, req.PlayerID)
 	} else {
 		http.Error(w, "not in this arena", 403)
 		return
@@ -192,4 +238,18 @@ func (s *Server) handleMyArenaStatusAuth(w http.ResponseWriter, r *http.Request,
 		}
 	}
 	writeJSON(w, map[string]interface{}{"in_arena": false})
+}
+
+// extractClaims tries to extract JWT claims from the Authorization header.
+// Returns nil if no valid token is present (graceful degradation).
+func extractClaims(r *http.Request) *auth.Claims {
+	h := r.Header.Get("Authorization")
+	if !strings.HasPrefix(h, "Bearer ") {
+		return nil
+	}
+	c, err := auth.ValidateJWT(strings.TrimPrefix(h, "Bearer "))
+	if err != nil {
+		return nil
+	}
+	return c
 }

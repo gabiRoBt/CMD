@@ -26,18 +26,16 @@ type WSEvent struct {
 }
 
 type GameStartPayload struct {
-	ArenaID    string `json:"arena_id"`
-	SSHCommand string `json:"ssh_command"`
-	Role       string `json:"role"`
-	Phase      string `json:"phase"`
-	SetupSecs  int    `json:"setup_seconds"`
+	ArenaID   string `json:"arena_id"`
+	Role      string `json:"role"`
+	Phase     string `json:"phase"`
+	SetupSecs int    `json:"setup_seconds"`
 }
 
 type PhaseChangePayload struct {
-	ArenaID    string `json:"arena_id"`
-	Phase      string `json:"phase"`
-	SSHCommand string `json:"ssh_command,omitempty"`
-	MessageRO  string `json:"message_ro"`
+	ArenaID   string `json:"arena_id"`
+	Phase     string `json:"phase"`
+	MessageRO string `json:"message_ro"`
 }
 
 type PouchResultPayload struct {

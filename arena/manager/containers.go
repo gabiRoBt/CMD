@@ -1,11 +1,9 @@
 package manager
 
 import (
-	"CMD/arena/ssh"
 	"context"
 	"fmt"
 	"log"
-	"net"
 	"sync"
 	"time"
 
@@ -14,7 +12,6 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
-	"github.com/docker/go-connections/nat"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -28,11 +25,15 @@ const (
 
 // Manager owns all running arenas and the Docker client.
 type Manager struct {
-	mu         sync.RWMutex
-	docker     *client.Client
-	dbPool     *pgxpool.Pool
-	arenas     map[string]*Arena
-	MasterKeys *ssh.SSHKeyPair
+	mu     sync.RWMutex
+	docker *client.Client
+	dbPool *pgxpool.Pool
+	arenas map[string]*Arena
+}
+
+// DockerClient expune clientul Docker pentru docker exec (terminal proxy).
+func (m *Manager) DockerClient() *client.Client {
+	return m.docker
 }
 
 func NewManager(dbPool *pgxpool.Pool) (*Manager, error) {
@@ -40,15 +41,10 @@ func NewManager(dbPool *pgxpool.Pool) (*Manager, error) {
 	if err != nil {
 		return nil, fmt.Errorf("cannot connect to Docker: %w", err)
 	}
-	masterKeys, err := ssh.GenerateSSHKeyPair()
-	if err != nil {
-		return nil, fmt.Errorf("MasterKey generation error: %w", err)
-	}
 	m := &Manager{
-		docker:     cli,
-		dbPool:     dbPool,
-		arenas:     make(map[string]*Arena),
-		MasterKeys: masterKeys,
+		docker: cli,
+		dbPool: dbPool,
+		arenas: make(map[string]*Arena),
 	}
 	m.cleanupOrphanContainers()
 	return m, nil
@@ -74,67 +70,65 @@ func (m *Manager) cleanupOrphanContainers() {
 	}
 }
 
-// startContainers provisions two containers for a match and waits for SSH.
+// startContainers provizionează două containere pentru un meci.
+// No longer wait for SSH — terminal connects via docker exec directly.
 func (m *Manager) startContainers(a *Arena) error {
 	log.Printf("[Arena %s] Starting containers...", a.ID)
 	a.HostTokens = generateAbilityTokens()
 	a.GuestTokens = generateAbilityTokens()
 
-	hostPort, hostID, err := m.spawnContainer(a.ID, "host", a.HostTokens)
+	hostID, err := m.spawnContainer(a.ID, "host", a.Type, a.Host.Lang, a.HostTokens)
 	if err != nil {
 		return fmt.Errorf("host container: %w", err)
 	}
 	a.Host.ContainerID = hostID
-	a.Host.SSHPort = hostPort
 
-	guestPort, guestID, err := m.spawnContainer(a.ID, "guest", a.GuestTokens)
+	guestID, err := m.spawnContainer(a.ID, "guest", a.Type, a.Guest.Lang, a.GuestTokens)
 	if err != nil {
 		m.forceRemove(hostID)
 		return fmt.Errorf("guest container: %w", err)
 	}
 	a.Guest.ContainerID = guestID
-	a.Guest.SSHPort = guestPort
 
-	log.Printf("[Arena %s] Waiting for SSH...", a.ID)
-	for _, p := range []struct {
-		id   string
-		port int
-	}{{hostID, hostPort}, {guestID, guestPort}} {
-		if err := waitForSSH("127.0.0.1", p.port, 30*time.Second); err != nil {
-			m.forceRemove(hostID)
-			m.forceRemove(guestID)
-			return fmt.Errorf("SSH not ready on port %d: %w", p.port, err)
-		}
+	// Wait for entrypoint to finish setup (files, permissions, etc.)
+	if err := m.waitForContainerReady(hostID); err != nil {
+		m.forceRemove(hostID)
+		m.forceRemove(guestID)
+		return fmt.Errorf("host container not ready: %w", err)
+	}
+	if err := m.waitForContainerReady(guestID); err != nil {
+		m.forceRemove(hostID)
+		m.forceRemove(guestID)
+		return fmt.Errorf("guest container not ready: %w", err)
 	}
 
 	a.Phase = PhaseCountdown
-	log.Printf("[Arena %s] Ready — Host:%d | Guest:%d", a.ID, hostPort, guestPort)
+	log.Printf("[Arena %s] Ready — Host:%s | Guest:%s", a.ID, hostID[:12], guestID[:12])
 	return nil
 }
 
-func (m *Manager) spawnContainer(arenaID, role string, tokens AbilityTokens) (int, string, error) {
+func (m *Manager) spawnContainer(arenaID, role, arenaType, lang string, tokens AbilityTokens) (string, error) {
 	ctx := context.Background()
 	resp, err := m.docker.ContainerCreate(
 		ctx,
 		&container.Config{
 			Image: ArenaImage,
 			Env: []string{
-				fmt.Sprintf("PLAYER_PUBLIC_KEY=%s", m.MasterKeys.PublicKey),
+				// PLAYER_PUBLIC_KEY removed — we no longer use SSH
 				fmt.Sprintf("ARENA_ID=%s", arenaID),
 				fmt.Sprintf("PLAYER_ROLE=%s", role),
+				fmt.Sprintf("ARENA_TYPE=%s", arenaType),
+				fmt.Sprintf("PLAYER_LANG=%s", lang),
 				fmt.Sprintf("ABILITY_SCRAMBLE=%s", tokens.Scramble),
 				fmt.Sprintf("ABILITY_REPAIR=%s", tokens.Repair),
 				fmt.Sprintf("ABILITY_ROCKET=%s", tokens.Rocket),
 				fmt.Sprintf("ABILITY_SONAR=%s", tokens.Sonar),
 			},
-			ExposedPorts: nat.PortSet{"22/tcp": struct{}{}},
+			// Nu mai expunem port SSH
 		},
 		&container.HostConfig{
-			PortBindings: nat.PortMap{
-				"22/tcp": []nat.PortBinding{{HostIP: "127.0.0.1", HostPort: "0"}},
-			},
 			AutoRemove:  false,
-			NetworkMode: "bridge",
+			NetworkMode: "none", // izolat complet de rețea — nu are nevoie de SSH
 			Resources: container.Resources{
 				Memory:    MaxMemoryBytes,
 				CPUShares: MaxCPUShares,
@@ -147,34 +141,65 @@ func (m *Manager) spawnContainer(arenaID, role string, tokens AbilityTokens) (in
 		fmt.Sprintf("%s%s-%s", ContainerPrefix, arenaID, role),
 	)
 	if err != nil {
-		return 0, "", fmt.Errorf("ContainerCreate: %w", err)
+		return "", fmt.Errorf("ContainerCreate: %w", err)
 	}
 	if err := m.docker.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
 		m.forceRemove(resp.ID)
-		return 0, "", fmt.Errorf("ContainerStart: %w", err)
+		return "", fmt.Errorf("ContainerStart: %w", err)
 	}
-	inspect, err := m.docker.ContainerInspect(ctx, resp.ID)
+	return resp.ID, nil
+}
+
+// waitForContainerReady waits until the container is running and the entrypoint has finished setup.
+// Check for the existence of the /tmp/.ready sentinel file created by entrypoint at the end.
+func (m *Manager) waitForContainerReady(containerID string) error {
+	ctx := context.Background()
+	deadline := time.Now().Add(30 * time.Second)
+	for time.Now().Before(deadline) {
+		inspect, err := m.docker.ContainerInspect(ctx, containerID)
+		if err != nil {
+			return fmt.Errorf("inspect error: %w", err)
+		}
+		if !inspect.State.Running {
+			time.Sleep(200 * time.Millisecond)
+			continue
+		}
+		// Container rulează — verificăm dacă entrypoint-ul a terminat
+		if m.checkFileExists(containerID, "/tmp/.ready") {
+			return nil
+		}
+		time.Sleep(200 * time.Millisecond)
+	}
+	return fmt.Errorf("timeout waiting for container %s", containerID[:12])
+}
+
+// checkFileExists verifică rapid dacă un fișier există în container.
+func (m *Manager) checkFileExists(containerID, path string) bool {
+	ctx := context.Background()
+	exec, err := m.docker.ContainerExecCreate(ctx, containerID, types.ExecConfig{
+		Cmd: []string{"test", "-f", path},
+	})
 	if err != nil {
-		m.forceRemove(resp.ID)
-		return 0, resp.ID, fmt.Errorf("ContainerInspect: %w", err)
+		return false
 	}
-	var port int
-	if bindings, ok := inspect.NetworkSettings.Ports["22/tcp"]; ok && len(bindings) > 0 {
-		fmt.Sscanf(bindings[0].HostPort, "%d", &port)
+	if err := m.docker.ContainerExecStart(ctx, exec.ID, types.ExecStartCheck{}); err != nil {
+		return false
 	}
-	if port == 0 {
-		m.forceRemove(resp.ID)
-		return 0, resp.ID, fmt.Errorf("could not determine SSH port")
+	for i := 0; i < 5; i++ {
+		ins, err := m.docker.ContainerExecInspect(ctx, exec.ID)
+		if err != nil {
+			return false
+		}
+		if !ins.Running {
+			return ins.ExitCode == 0
+		}
+		time.Sleep(50 * time.Millisecond)
 	}
-	return port, resp.ID, nil
+	return false
 }
 
 func (m *Manager) stopContainer(containerID string) {
-	timeout := 3
-	ctx := context.Background()
-	if err := m.docker.ContainerStop(ctx, containerID, container.StopOptions{Timeout: &timeout}); err != nil {
-		log.Printf("[Cleanup] Stop %s: %v", containerID[:12], err)
-	}
+	// Skip graceful stop to instantly kill the nuke script and close terminal WS.
 	m.forceRemove(containerID)
 }
 
@@ -195,16 +220,4 @@ func (m *Manager) cleanup(a *Arena) {
 	}
 }
 
-func waitForSSH(host string, port int, timeout time.Duration) error {
-	addr := net.JoinHostPort(host, fmt.Sprintf("%d", port))
-	deadline := time.Now().Add(timeout)
-	for time.Now().Before(deadline) {
-		conn, err := net.DialTimeout("tcp", addr, 1*time.Second)
-		if err == nil {
-			conn.Close()
-			return nil
-		}
-		time.Sleep(500 * time.Millisecond)
-	}
-	return fmt.Errorf("timeout waiting for SSH on %s", addr)
-}
+// waitForSSH removed — using docker exec instead of SSH.

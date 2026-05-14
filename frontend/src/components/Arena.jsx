@@ -110,14 +110,15 @@ export default function Arena({
         }}
       />
 
-      <TerminalWindow
-        ref={termWinRef}
-        arenaID={arenaID}
-        playerID={playerID}
-        phase={phase}
-        t={t}
-        hidden={!!gameOverInfo}
-      />
+      {!gameOverInfo && (
+        <TerminalWindow
+          ref={termWinRef}
+          arenaID={arenaID}
+          playerID={playerID}
+          phase={phase}
+          t={t}
+        />
+      )}
 
       {!gameOverInfo && (
         <ArenaFooter

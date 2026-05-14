@@ -2,7 +2,7 @@ import { Leaderboard    } from './Leaderboard';
 import { ArenaPanel     } from './lobby/ArenaPanel';
 import { ArenaListPanel } from './lobby/ArenaListPanel';
 
-export default function Lobby({ t, user, arenaID, arenaList, onUpdateArena, onLeaveArena }) {
+export default function Lobby({ t, user, arenaID, arenaList, onUpdateArena, onLeaveArena, lang }) {
   const currentArena = arenaList.find(a => a.id === arenaID);
 
   return (
@@ -14,6 +14,7 @@ export default function Lobby({ t, user, arenaID, arenaList, onUpdateArena, onLe
           arenaID={arenaID} 
           currentArena={currentArena}
           onUpdateArena={onUpdateArena} 
+          lang={lang}
           onLeaveArena={onLeaveArena}
           arenaList={arenaList}
         />
@@ -26,6 +27,7 @@ export default function Lobby({ t, user, arenaID, arenaList, onUpdateArena, onLe
           arenaID={arenaID}
           arenaList={arenaList}
           onUpdateArena={onUpdateArena}
+          lang={lang}
         />
       </div>
 

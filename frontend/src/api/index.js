@@ -58,9 +58,10 @@ export const api = {
   // Arena
   arenas:         ()                               => get('/api/arenas'),
   myArenaStatus:  ()                               => get('/api/arena/my_status'),
-  createArena:    (name, type)                     => post('/api/arena/create', { name, type }),
-  joinArena:      (arenaID)                        => post('/api/arena/join',   { arena_id: arenaID }),
+  createArena:    (name, type, lang)               => post('/api/arena/create', { name, type, lang }),
+  joinArena:      (arenaID, lang)                  => post('/api/arena/join',   { arena_id: arenaID, lang }),
   setReady:       (arenaID, playerID)              => post('/api/arena/ready',  { arena_id: arenaID, player_id: playerID }),
+  setUnready:     (arenaID, playerID)              => post('/api/arena/unready',{ arena_id: arenaID, player_id: playerID }),
   leaveArena:     (arenaID, playerID)              => post('/api/arena/leave',  { arena_id: arenaID, player_id: playerID }),
   useAbility:     (arenaID, playerID, ability)     => post('/api/ability', { arena_id: arenaID, player_id: playerID, ability }),
 };

@@ -28,9 +28,10 @@ export function Notification({ show, msg }) {
 export function GameOverOverlay({ info, t, onReturn, redirectSecs }) {
   useEffect(() => {
     if (info) {
-      if (info.draw) sounds.draw();
-      else if (info.won) sounds.win();
-      else sounds.lose();
+      if (!info.draw) {
+        if (info.won) sounds.win();
+        else sounds.lose();
+      }
     }
   }, [info]);
 

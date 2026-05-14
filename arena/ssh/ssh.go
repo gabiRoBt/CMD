@@ -47,14 +47,27 @@ func validatePublicKey(pubKey string) error {
 }
 
 // wsConnWrapper — bridge WebSocket ↔ SSH.
-type wsConnWrapper struct{ *websocket.Conn }
+// buf reține restul unui mesaj WebSocket care nu a încăput în p la Read().
+// buf holds the rest of a WebSocket message that didn't fit into p in Read().
+type wsConnWrapper struct {
+	*websocket.Conn
+	buf []byte
+}
 
+// Read implements io.Reader with internal buffering.
+// copy(p, msg) silently truncated messages larger than p — the fix
+// consumes the message gradually, keeping the rest in buf for subsequent calls.
 func (w *wsConnWrapper) Read(p []byte) (int, error) {
-	_, msg, err := w.Conn.ReadMessage()
-	if err != nil {
-		return 0, err
+	for len(w.buf) == 0 {
+		_, msg, err := w.Conn.ReadMessage()
+		if err != nil {
+			return 0, err
+		}
+		w.buf = msg
 	}
-	return copy(p, msg), nil
+	n := copy(p, w.buf)
+	w.buf = w.buf[n:]
+	return n, nil
 }
 
 func (w *wsConnWrapper) Write(p []byte) (int, error) {
@@ -96,12 +109,14 @@ func StartSSHProxy(ws *websocket.Conn, sshAddress string, privateKeyPEM []byte) 
 	defer session.Close()
 
 	if err := session.RequestPty("xterm-256color", 40, 80, gossh.TerminalModes{
-		gossh.ECHO: 1, gossh.TTY_OP_ISPEED: 14400, gossh.TTY_OP_OSPEED: 14400,
+		gossh.ECHO:          1,
+		gossh.TTY_OP_ISPEED: 115200,
+		gossh.TTY_OP_OSPEED: 115200,
 	}); err != nil {
 		log.Printf("RequestPty error: %v", err)
 	}
 
-	wsw := &wsConnWrapper{ws}
+	wsw := &wsConnWrapper{Conn: ws}
 	session.Stdin = wsw
 	session.Stdout = wsw
 	session.Stderr = wsw

@@ -293,7 +293,7 @@ function drawTailFire(ctx, cx, tailTopY, R, elapsed, alpha) {
 // Bomb fixed in center. Horizontal streaks sweep left↔right past the camera.
 // ───────────────────────────────────────────────────────────────────────────────
 export function animNukeFall(canvas, ctx, skin, onDone) {
-  const DURATION = 6500;
+  const DURATION = 5000;
   const BOMB_R   = 65;
   const theme    = getTheme(skin);
   let start = null;
@@ -383,7 +383,7 @@ export function animBombApproach(canvas, ctx, targetY, skin, onDone) {
 }
 
 // ── PHASE 3: Blast + fast whiteout (2500ms) ───────────────────────────────
-export function animNukeBlast(canvas, ctx, cx, cy, skin, onDone) {
+export function animNukeBlast(canvas, ctx, cx, cy, skin, whiteoutRef, onDone) {
   const DURATION = 2500;
   const theme    = getTheme(skin);
   const diagR    = Math.hypot(
@@ -403,8 +403,8 @@ export function animNukeBlast(canvas, ctx, cx, cy, skin, onDone) {
     ctx.clearRect(0, 0, W, H);
     fillArenaBackground(ctx, W, H, theme);
 
-    // ── Shockwave ring (t: 0 → 0.18, quick burst) ─────────────────────────
-    const rT  = Math.min(t / 0.18, 1);
+    // ── Shockwave ring (t: 0 → 0.10, quick burst) ─────────────────────────
+    const rT  = Math.min(t / 0.10, 1);
     const rET = easeOutQuad(rT);
     const rR  = diagR * 0.88 * rET;
     const rAl = Math.max(0, 1 - rET * 1.6);
@@ -428,19 +428,23 @@ export function animNukeBlast(canvas, ctx, cx, cy, skin, onDone) {
       ctx.restore();
     }
 
-    // ── Initial flash (brief, t < 0.08) ────────────────────────────────────
-    const flashAl = Math.max(0, 1 - t / 0.08);
+    // ── Initial flash (brief, t < 0.05) ────────────────────────────────────
+    const flashAl = Math.max(0, 1 - t / 0.05);
     if (flashAl > 0) {
       ctx.fillStyle = `rgba(255,255,255,${flashAl})`;
       ctx.fillRect(0, 0, W, H);
     }
 
-    // ── Whiteout slams in right after shockwave (t: 0.18 → 0.45) ──────────
-    if (t > 0.18) {
-      const wt  = Math.min((t - 0.18) / 0.27, 1); // fully opaque by t=0.45
+    // ── Whiteout slams in right after shockwave (t: 0.08 → 0.25) ──────────
+    if (t > 0.08) {
+      const wt  = Math.min((t - 0.08) / 0.17, 1); // fully opaque by t=0.25
       const wet = easeInQuad(wt);
       const wR  = diagR * 1.1 * wet;
       const wAl = Math.min(1, wet * 2.8);           // opaque quickly
+
+      if (whiteoutRef && whiteoutRef.current) {
+        whiteoutRef.current.style.opacity = wAl;
+      }
 
       ctx.save();
       ctx.beginPath();
@@ -455,6 +459,9 @@ export function animNukeBlast(canvas, ctx, cx, cy, skin, onDone) {
     } else {
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, W, H);
+      if (whiteoutRef && whiteoutRef.current) {
+        whiteoutRef.current.style.opacity = 1;
+      }
       onDone?.();
     }
   }

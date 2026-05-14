@@ -7,7 +7,12 @@
     "test": "echo \"Error: no test specified\" && exit 1",
 
     "prestart-all": "docker build -f Dockerfile.arena -t cmd-arena:latest . && docker start cmd-postgres || docker run --name cmd-postgres -e POSTGRES_USER=${POSTGRES_USER:-postgres} -e POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres} -e POSTGRES_DB=cmd_arena -p 5432:5432 -d postgres:15-alpine",
-    "start-all": "concurrently -c \"cyan.bold,magenta.bold,yellow.bold\" -n \"GO,VITE,NGROK\" \"go run main.go\" \"cd frontend && npm run dev\" \"ngrok http 5173 --log=stdout\""
+    "start-all": "concurrently -c \"cyan.bold,magenta.bold,yellow.bold\" -n \"GO,VITE,NGROK\" \"go run main.go\" \"cd frontend && npm run dev\" \"ngrok http 5173 --log=stdout\"",
+
+    "build-frontend": "cd frontend && npm run build",
+
+    "prebuild-all": "docker build -f Dockerfile.arena -t cmd-arena:latest . && docker start cmd-postgres || docker run --name cmd-postgres -e POSTGRES_USER=${POSTGRES_USER:-postgres} -e POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres} -e POSTGRES_DB=cmd_arena -p 5432:5432 -d postgres:15-alpine",
+    "build-all": "npm run build-frontend && concurrently -c \"cyan.bold,yellow.bold\" -n \"GO,NGROK\" \"go run main.go\" \"ngrok http 8080 --log=stdout\""
   },
   "repository": {
     "type": "git",

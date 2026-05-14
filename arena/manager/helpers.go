@@ -25,6 +25,8 @@ func generateAbilityTokens() AbilityTokens {
 // randomHex returns a cryptographically random hex string of length 2n.
 func randomHex(n int) string {
 	b := make([]byte, n)
-	cryptorand.Read(b)
+	if _, err := cryptorand.Read(b); err != nil {
+		panic(fmt.Sprintf("crypto/rand.Read failed: %v", err))
+	}
 	return hex.EncodeToString(b)
 }

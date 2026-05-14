@@ -70,7 +70,7 @@ func createDatabaseIfNotExists(ctx context.Context, dsn string) error {
 	}
 	if !exists {
 		log.Printf("Baza de date %s nu exista. O cream...", dbName)
-		_, err = pool.Exec(ctx, fmt.Sprintf("CREATE DATABASE %s", dbName))
+		_, err = pool.Exec(ctx, fmt.Sprintf(`CREATE DATABASE "%s"`, dbName))
 		if err != nil {
 			return err
 		}

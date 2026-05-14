@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { api } from '../../api';
 
-export function ArenaListPanel({ t, user, arenaID, arenaList, onUpdateArena }) {
+export function ArenaListPanel({ t, user, arenaID, arenaList, onUpdateArena, lang }) {
   const [selectedID,   setSelectedID]   = useState(null);
   const [errorStatus,  setErrorStatus]  = useState('');
   const [loading,      setLoading]      = useState(false);
@@ -11,7 +11,7 @@ export function ArenaListPanel({ t, user, arenaID, arenaList, onUpdateArena }) {
     setErrorStatus('');
     setLoading(true);
     try {
-      const d = await api.joinArena(selectedID);
+      const d = await api.joinArena(selectedID, lang);
       onUpdateArena(d.arena_id, d.role);
     } catch (e) {
       setErrorStatus(e.message || 'Failed to join arena');
@@ -66,7 +66,7 @@ export function ArenaListPanel({ t, user, arenaID, arenaList, onUpdateArena }) {
                   <div className="arena-id" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                     <span>{a.name || a.id}</span>
                     <span style={{
-                      backgroundColor: a.type === 'competitive' ? 'var(--amber-dim)' : 'var(--green-dim)',
+                      backgroundColor: 'var(--green-dim)',
                       color: '#000', padding: '1px 4px', borderRadius: 2,
                       fontSize: '0.55rem', fontWeight: 'bold', textTransform: 'uppercase'
                     }}>{a.type === 'competitive' ? (t.lblComp? t.lblComp.split(' ')[0] : 'COMPETITIVE') : (t.lblCasual || 'CASUAL')}</span>

@@ -92,13 +92,18 @@ export default function App() {
     handleWSEvent(ev);
   }, [handleWSEvent]);
 
-  const { connect: connectWS } = useWebSocket(onWSEvent, setWsStatus);
+  const { connect: connectWS, close: closeWS } = useWebSocket(onWSEvent, setWsStatus);
 
   // ── Auth initialization ──────────────────────────────────────────────────
   useEffect(() => {
+    // Abort flag prevents StrictMode double-fire from creating
+    // two WS connections that fight each other.
+    let aborted = false;
+
     const initAuth = async () => {
       try {
         const u = await api.me();
+        if (aborted) return;
         if (u && u.username) {
            setUser({ username: u.username, isGuest: u.is_guest, elo: u.elo || 0 });
            playerIDRef.current = u.username;
@@ -106,6 +111,7 @@ export default function App() {
           // Checking if we are in a match
           try {
             const status = await api.myArenaStatus();
+            if (aborted) return;
             if (status && status.in_arena) {
                connectWS(u.username);
                setArenaID(status.arena_id);
@@ -133,12 +139,13 @@ export default function App() {
              console.error("Check status failed", err);
           }
 
+          if (aborted) return;
           // Normal login flow
           connectWS(u.username);
           setView('lobby');
         }
       } catch (e) {
-        setView('auth');
+        if (!aborted) setView('auth');
       }
     };
     if (localStorage.getItem('cmd_token')) {
@@ -148,6 +155,7 @@ export default function App() {
     }
 
     const onAuthExpired = () => {
+      closeWS();
       setUser(null);
       stopCountdown();
       setView('auth');
@@ -163,6 +171,8 @@ export default function App() {
     window.addEventListener('auth_expired', onAuthExpired);
     window.addEventListener('kicked', onKicked);
     return () => {
+      aborted = true;
+      closeWS();
       window.removeEventListener('auth_expired', onAuthExpired);
       window.removeEventListener('kicked', onKicked);
     };
@@ -178,12 +188,13 @@ export default function App() {
 
   const handleLogout = useCallback(() => {
     localStorage.removeItem('cmd_token');
+    closeWS();
     setUser(null);
     stopCountdown();
     setView('auth');
     setArenaID(null);
     setRole(null);
-  }, [stopCountdown]);
+  }, [stopCountdown, closeWS]);
 
   const returnToLobby = useCallback(() => {
     stopCountdown();
@@ -220,6 +231,7 @@ export default function App() {
           arenaList={arenaList}
           onUpdateArena={(id, r) => { setArenaID(id); setRole(r); }}
           onLeaveArena={() => { setArenaID(null); setRole(null); }}
+          lang={lang}
         />
       ) : view === 'countdown' ? (
         <NukeCountdown onFinish={() => setView('arena')} t={t} />

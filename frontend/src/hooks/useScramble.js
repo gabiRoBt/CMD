@@ -19,6 +19,9 @@ const SCRAMBLE_MS = 30_000;
 /**
  * Intercepts the terminal WebSocket to scramble command names for 30 s.
  *
+ * Uses the shared intercept chain via ws._cmdInterceptors to avoid
+ * conflicts with useRocket (both previously monkey-patched ws.send).
+ *
  * Fix for "cdcp" display artefact:
  *   xterm sends chars one-by-one → SSH echoes them → user sees typed text.
  *   On Enter we send Ctrl+U (\x15) which makes bash erase the current input line,
@@ -27,14 +30,15 @@ const SCRAMBLE_MS = 30_000;
  */
 export function useScramble(wsRef) {
   const timerRef = useRef(null);
+  const idRef    = useRef(null);
 
-  /** Restore ws.send to its original and clear timer. */
+  /** Remove interceptor and clear timer. */
   const cancelScramble = useCallback(() => {
     clearTimeout(timerRef.current);
     const ws = wsRef.current;
-    if (ws?._origSend) {
-      ws.send      = ws._origSend;
-      ws._origSend = null;
+    if (ws?._cmdInterceptors && idRef.current) {
+      ws._cmdInterceptors.delete(idRef.current);
+      idRef.current = null;
     }
   }, [wsRef]);
 
@@ -42,21 +46,19 @@ export function useScramble(wsRef) {
     const ws = wsRef.current;
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
 
-    // Reset any previous patch first
+    // Reset any previous interceptor first
     cancelScramble();
 
     // Build bijective random remap (no fixed points guaranteed by Sattolo)
     const shuffled = derangement(CMDS);
     const cmdMap   = new Map(CMDS.map((cmd, i) => [cmd, shuffled[i]]));
 
-    const orig     = ws.send.bind(ws);
-    ws._origSend   = orig;
-    let buf        = '';
+    let buf = '';
 
-    ws.send = (data) => {
+    const interceptor = (data, origSend) => {
       // Binary frames (terminal resize, etc.) pass through unchanged
       if (data instanceof ArrayBuffer || data instanceof Uint8Array) {
-        return orig(data);
+        return origSend(data);
       }
 
       const str = typeof data === 'string' ? data : String(data);
@@ -70,14 +72,10 @@ export function useScramble(wsRef) {
 
         const mapped = cmdMap.get(cmd);
         if (mapped) {
-          // \x15 = Ctrl+U → bash clears the current visible input line,
-          // then we type the substituted command and press Enter.
-          // The echo of the erased chars disappears; only the substituted
-          // command is echoed and executed.
           const rewritten = [mapped, ...args].join(' ');
-          orig('\x15' + rewritten + '\r');
+          origSend('\x15' + rewritten + '\r');
         } else {
-          orig(data);
+          origSend(data);
         }
         return;
       }
@@ -85,20 +83,27 @@ export function useScramble(wsRef) {
       // ── Backspace ────────────────────────────────────────────────────────
       if (str === '\x7f' || str === '\b') {
         buf = buf.slice(0, -1);
-        orig(data);
+        origSend(data);
         return;
       }
 
       // ── Escape sequences / control codes → pass through, don't buffer ───
       if (str.startsWith('\x1b') || str.charCodeAt(0) < 32) {
-        orig(data);
+        origSend(data);
         return;
       }
 
       // ── Printable character ───────────────────────────────────────────────
       buf += str;
-      orig(data);
+      origSend(data);
     };
+
+    // Register interceptor on the shared chain
+    if (!ws._cmdInterceptors) ws._cmdInterceptors = new Map();
+    const id = 'scramble';
+    idRef.current = id;
+    ws._cmdInterceptors.set(id, interceptor);
+    _ensureInterceptChain(ws);
 
     timerRef.current = setTimeout(cancelScramble, SCRAMBLE_MS);
   }, [wsRef, cancelScramble]);
@@ -109,4 +114,39 @@ export function useScramble(wsRef) {
   }, [cancelScramble]);
 
   return { activateScramble, cancelScramble };
+}
+
+/**
+ * Installs the shared ws.send intercept chain once.
+ * All interceptors in ws._cmdInterceptors are called in order.
+ * If none handle the data (all call origSend), the original send is used.
+ */
+function _ensureInterceptChain(ws) {
+  if (ws._interceptChainInstalled) return;
+  ws._interceptChainInstalled = true;
+
+  const origSend = ws.send.bind(ws);
+  ws._origSend = origSend;
+
+  ws.send = (data) => {
+    const interceptors = ws._cmdInterceptors;
+    if (!interceptors || interceptors.size === 0) {
+      return origSend(data);
+    }
+
+    // Check 'rocket' first — if active, it blocks all input
+    const rocketFn = interceptors.get('rocket');
+    if (rocketFn) {
+      return rocketFn(data, origSend);
+    }
+
+    // Then try 'scramble'
+    const scrambleFn = interceptors.get('scramble');
+    if (scrambleFn) {
+      return scrambleFn(data, origSend);
+    }
+
+    // Fallback: no active interceptor
+    return origSend(data);
+  };
 }
