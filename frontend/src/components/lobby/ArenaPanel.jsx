@@ -172,8 +172,8 @@ export function ArenaPanel({ t, user, arenaID, currentArena, arenaList, onUpdate
                   {t.descRepair}
                 </div>
                 <div style={{ background: 'rgba(0,255,65,0.05)', padding: '6px', border: '1px solid rgba(0,255,65,0.1)', borderRadius: 2 }}>
-                  <b style={{color: 'var(--green)', display: 'block', marginBottom: '2px'}}>./reveal</b>
-                  {t.descReveal}
+                  <b style={{color: 'var(--green)', display: 'block', marginBottom: '2px'}}>./sonar</b>
+                  {t.descSonar}
                 </div>
                 <div style={{ background: 'rgba(0,255,65,0.05)', padding: '6px', border: '1px solid rgba(0,255,65,0.1)', borderRadius: 2 }}>
                   <b style={{color: 'var(--green)', display: 'block', marginBottom: '2px'}}>./rocket</b>

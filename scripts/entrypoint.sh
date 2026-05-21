@@ -422,72 +422,87 @@ _nuke_strike() {
     echo "$strikes" > /tmp/.nuke_strikes
     local remaining=$((3 - strikes))
 
-    # W=59 chars between the two ║ borders
-    # printf "%-59s" pads to 59 chars — guarantees right border alignment
+    # W=59 = visible chars between the two ║ borders.
+    # Emoji-safe padding: we pad using "XX" (2 ASCII chars = 2 display cols) as a
+    # placeholder, then bash-substitute the real emoji AFTER printf is done.
+    # This means printf never sees wide/multi-byte emoji → alignment is exact.
     local W=59
     local BOX_TOP="  ╔═══════════════════════════════════════════════════════════╗"
     local BOX_BOT="  ╚═══════════════════════════════════════════════════════════╝"
-    local BOX_BLK
-    printf -v BOX_BLK "  ║%-${W}s║" " "
+
+    # _bl : plain text line
+    _bl()  { printf "  ║%-${W}s║\n" "$1"; }
+    # _bl_x : red [X] prefix (violation/death) — pad with ASCII marker, colorize after
+    _bl_x() {
+        local _p
+        _p=$(printf "%-${W}s" "   [X]  $1")
+        printf "  ║%s║\n" "${_p/\[X\]/$'\033[1;31m[X]\033[0m'}"
+    }
+    # _bl_w : yellow [!] prefix (warning) — pad with ASCII marker, colorize after
+    _bl_w() {
+        local _p
+        _p=$(printf "%-${W}s" "   [!]  $1")
+        printf "  ║%s║\n" "${_p/\[!\]/$'\033[1;33m[!]\033[0m'}"
+    }
 
     echo ""
     echo "$BOX_TOP"
 
     if [ "$PLAYER_LANG" = "ro" ]; then
-        printf "  ║%-${W}s║\n" "  ⛔  ÎNCĂLCAREA INTEGRITĂȚII — CODURI DISTRUSE"
-        echo "$BOX_BLK"
+        _bl_x "INCALCAREA INTEGRITATII - CODURI DISTRUSE"
+        _bl ""
         if [ "$remaining" -gt 0 ]; then
-            printf "  ║%-${W}s║\n" "  ⚠️  STRIKE $strikes/3 — mai ai $remaining avertisment(e)"
-            echo "$BOX_BLK"
-            printf "  ║%-${W}s║\n" "  Codurile au fost RESTAURATE."
-            printf "  ║%-${W}s║\n" "  Poți MUTA, COPIA, ARHIVA — dar nu șterge."
-            printf "  ║%-${W}s║\n" "  Următoarea încălcare: strike $((strikes + 1))/3"
+            _bl_w "STRIKE $strikes/3 - mai ai $remaining avertisment(e)"
+            _bl ""
+            _bl "  Codurile au fost RESTAURATE."
+            _bl "  Poti MUTA, COPIA, ARHIVA - dar nu sterge."
+            _bl "  Urmatoarea incalcare: strike $((strikes + 1))/3"
         else
-            printf "  ║%-${W}s║\n" "  ☠️  STRIKE 3/3 — ÎNFRÂNGERE AUTOMATĂ"
-            echo "$BOX_BLK"
-            printf "  ║%-${W}s║\n" "  Ai fost descalificat pentru distrugerea codurilor."
+            _bl_x "STRIKE 3/3 - INFRANGERE AUTOMATA"
+            _bl ""
+            _bl "  Ai fost descalificat pentru distrugerea codurilor."
         fi
     elif [ "$PLAYER_LANG" = "fr" ]; then
-        printf "  ║%-${W}s║\n" "  ⛔  VIOLATION D'INTÉGRITÉ — CODES DÉTRUITS"
-        echo "$BOX_BLK"
+        _bl_x "VIOLATION D'INTEGRITE - CODES DETRUITS"
+        _bl ""
         if [ "$remaining" -gt 0 ]; then
-            printf "  ║%-${W}s║\n" "  ⚠️  STRIKE $strikes/3 — $remaining avertissement(s) restant(s)"
-            echo "$BOX_BLK"
-            printf "  ║%-${W}s║\n" "  Les codes ont été RESTAURÉS."
-            printf "  ║%-${W}s║\n" "  Vous pouvez DÉPLACER, COPIER, ARCHIVER — pas supprimer."
-            printf "  ║%-${W}s║\n" "  Prochaine violation : strike $((strikes + 1))/3"
+            _bl_w "STRIKE $strikes/3 - $remaining avertissement(s) restant(s)"
+            _bl ""
+            _bl "  Les codes ont ete RESTAURES."
+            _bl "  Vous pouvez DEPLACER, COPIER, ARCHIVER - pas supprimer."
+            _bl "  Prochaine violation : strike $((strikes + 1))/3"
         else
-            printf "  ║%-${W}s║\n" "  ☠️  STRIKE 3/3 — DÉFAITE AUTOMATIQUE"
-            echo "$BOX_BLK"
-            printf "  ║%-${W}s║\n" "  Disqualifié pour avoir détruit les codes."
+            _bl_x "STRIKE 3/3 - DEFAITE AUTOMATIQUE"
+            _bl ""
+            _bl "  Disqualifie pour avoir detruit les codes."
         fi
     elif [ "$PLAYER_LANG" = "es" ]; then
-        printf "  ║%-${W}s║\n" "  ⛔  VIOLACIÓN — CÓDIGOS NUCLEARES DESTRUIDOS"
-        echo "$BOX_BLK"
+        _bl_x "VIOLACION - CODIGOS NUCLEARES DESTRUIDOS"
+        _bl ""
         if [ "$remaining" -gt 0 ]; then
-            printf "  ║%-${W}s║\n" "  ⚠️  STRIKE $strikes/3 — $remaining advertencia(s) restante(s)"
-            echo "$BOX_BLK"
-            printf "  ║%-${W}s║\n" "  Los códigos han sido RESTAURADOS."
-            printf "  ║%-${W}s║\n" "  Puedes MOVER, COPIAR o ARCHIVAR — pero no borrar."
-            printf "  ║%-${W}s║\n" "  Próxima violación: strike $((strikes + 1))/3"
+            _bl_w "STRIKE $strikes/3 - $remaining advertencia(s) restante(s)"
+            _bl ""
+            _bl "  Los codigos han sido RESTAURADOS."
+            _bl "  Puedes MOVER, COPIAR o ARCHIVAR - pero no borrar."
+            _bl "  Proxima violacion: strike $((strikes + 1))/3"
         else
-            printf "  ║%-${W}s║\n" "  ☠️  STRIKE 3/3 — DERROTA AUTOMÁTICA"
-            echo "$BOX_BLK"
-            printf "  ║%-${W}s║\n" "  Descalificado por destruir los códigos nucleares."
+            _bl_x "STRIKE 3/3 - DERROTA AUTOMATICA"
+            _bl ""
+            _bl "  Descalificado por destruir los codigos nucleares."
         fi
     else
-        printf "  ║%-${W}s║\n" "  ⛔  INTEGRITY VIOLATION — NUCLEAR CODES DESTROYED"
-        echo "$BOX_BLK"
+        _bl_x "INTEGRITY VIOLATION - NUCLEAR CODES DESTROYED"
+        _bl ""
         if [ "$remaining" -gt 0 ]; then
-            printf "  ║%-${W}s║\n" "  ⚠️  STRIKE $strikes/3 — $remaining warning(s) remaining"
-            echo "$BOX_BLK"
-            printf "  ║%-${W}s║\n" "  The codes have been RESTORED."
-            printf "  ║%-${W}s║\n" "  You may MOVE, COPY, or ARCHIVE them — not delete."
-            printf "  ║%-${W}s║\n" "  Next violation: strike $((strikes + 1))/3"
+            _bl_w "STRIKE $strikes/3 - $remaining warning(s) remaining"
+            _bl ""
+            _bl "  The codes have been RESTORED."
+            _bl "  You may MOVE, COPY, or ARCHIVE them - not delete."
+            _bl "  Next violation: strike $((strikes + 1))/3"
         else
-            printf "  ║%-${W}s║\n" "  ☠️  STRIKE 3/3 — AUTOMATIC DEFEAT"
-            echo "$BOX_BLK"
-            printf "  ║%-${W}s║\n" "  You have been disqualified for destroying nuclear codes."
+            _bl_x "STRIKE 3/3 - AUTOMATIC DEFEAT"
+            _bl ""
+            _bl "  You have been disqualified for destroying nuclear codes."
         fi
     fi
 
@@ -679,22 +694,68 @@ while true; do
     remaining=$((3 - strikes))
 
     # Print warning to ALL player terminals
+    # ASCII+ANSI approach: pad with [X]/[!] markers (3 ASCII chars = 3 display cols),
+    # then bash-substitute the color codes AFTER printf. Zero wide-char issues.
+    W=59
+    _gx() { local _p; _p=$(printf "%-${W}s" "   [X]  $1"); printf "  ║%s║\n" "${_p/\[X\]/$'\033[1;31m[X]\033[0m'}"; }
+    _gw() { local _p; _p=$(printf "%-${W}s" "   [!]  $1"); printf "  ║%s║\n" "${_p/\[!\]/$'\033[1;33m[!]\033[0m'}"; }
     for pts in /dev/pts/*; do
         [ "$pts" = "/dev/pts/ptmx" ] && continue
         {
             echo ""
             echo "  ╔═══════════════════════════════════════════════════════════╗"
-            echo "  ║  ⛔  INTEGRITY VIOLATION — NUCLEAR CODES DESTROYED        ║"
-            echo "  ║                                                           ║"
-            if [ "$remaining" -gt 0 ]; then
-                echo "  ║  ⚠️  STRIKE $strikes/3 — $remaining warning(s) remaining   ║"
-                echo "  ║                                                           ║"
-                echo "  ║  The codes have been RESTORED.                            ║"
-                echo "  ║  You may MOVE, COPY, or ARCHIVE them — not delete.        ║"
+            if [ "$PLAYER_LANG" = "ro" ]; then
+                _gx "INCALCAREA INTEGRITATII - CODURI DISTRUSE"
+                printf "  ║%-${W}s║\n" " "
+                if [ "$remaining" -gt 0 ]; then
+                    _gw "STRIKE $strikes/3 - mai ai $remaining avertisment(e)"
+                    printf "  ║%-${W}s║\n" " "
+                    printf "  ║%-${W}s║\n" "  Codurile au fost RESTAURATE."
+                    printf "  ║%-${W}s║\n" "  Poti MUTA, COPIA, ARHIVA - dar nu sterge."
+                else
+                    _gx "STRIKE 3/3 - INFRANGERE AUTOMATA"
+                    printf "  ║%-${W}s║\n" " "
+                    printf "  ║%-${W}s║\n" "  Ai fost descalificat."
+                fi
+            elif [ "$PLAYER_LANG" = "fr" ]; then
+                _gx "VIOLATION D'INTEGRITE - CODES DETRUITS"
+                printf "  ║%-${W}s║\n" " "
+                if [ "$remaining" -gt 0 ]; then
+                    _gw "STRIKE $strikes/3 - $remaining avertissement(s) restant(s)"
+                    printf "  ║%-${W}s║\n" " "
+                    printf "  ║%-${W}s║\n" "  Les codes ont ete RESTAURES."
+                    printf "  ║%-${W}s║\n" "  Vous pouvez DEPLACER, COPIER, ARCHIVER."
+                else
+                    _gx "STRIKE 3/3 - DEFAITE AUTOMATIQUE"
+                    printf "  ║%-${W}s║\n" " "
+                    printf "  ║%-${W}s║\n" "  Disqualifie pour avoir detruit les codes."
+                fi
+            elif [ "$PLAYER_LANG" = "es" ]; then
+                _gx "VIOLACION - CODIGOS NUCLEARES DESTRUIDOS"
+                printf "  ║%-${W}s║\n" " "
+                if [ "$remaining" -gt 0 ]; then
+                    _gw "STRIKE $strikes/3 - $remaining advertencia(s) restante(s)"
+                    printf "  ║%-${W}s║\n" " "
+                    printf "  ║%-${W}s║\n" "  Los codigos han sido RESTAURADOS."
+                    printf "  ║%-${W}s║\n" "  Puedes MOVER, COPIAR o ARCHIVAR."
+                else
+                    _gx "STRIKE 3/3 - DERROTA AUTOMATICA"
+                    printf "  ║%-${W}s║\n" " "
+                    printf "  ║%-${W}s║\n" "  Descalificado por destruir los codigos."
+                fi
             else
-                echo "  ║  ☠️  STRIKE 3/3 — AUTOMATIC DEFEAT                        ║"
-                echo "  ║                                                           ║"
-                echo "  ║  Disqualified for destroying nuclear codes.               ║"
+                _gx "INTEGRITY VIOLATION - NUCLEAR CODES DESTROYED"
+                printf "  ║%-${W}s║\n" " "
+                if [ "$remaining" -gt 0 ]; then
+                    _gw "STRIKE $strikes/3 - $remaining warning(s) remaining"
+                    printf "  ║%-${W}s║\n" " "
+                    printf "  ║%-${W}s║\n" "  The codes have been RESTORED."
+                    printf "  ║%-${W}s║\n" "  You may MOVE, COPY, or ARCHIVE them - not delete."
+                else
+                    _gx "STRIKE 3/3 - AUTOMATIC DEFEAT"
+                    printf "  ║%-${W}s║\n" " "
+                    printf "  ║%-${W}s║\n" "  Disqualified for destroying nuclear codes."
+                fi
             fi
             echo "  ╚═══════════════════════════════════════════════════════════╝"
             echo ""

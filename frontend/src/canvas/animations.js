@@ -3,8 +3,7 @@
  * They accept a CanvasRenderingContext2D and coordinates, run their own
  * rAF loops (vsync-aligned, nu setInterval), and clean up after themselves.
  *
- * Fix: setInterval(fn, 16) nu era sincronizat cu vsync-ul monitorului și
- * producea frame tears/jitter. requestAnimationFrame cu delta-time rezolvă asta.
+ * Each function returns a cancel() that stops the loop immediately.
  */
 
 /** Parabolic projectile with trail + impact rings. */
@@ -12,9 +11,17 @@ export function animProjectile(ctx, canvas, arena, sx, sy, tx, ty, col) {
   const trail = [];
   let tick = 0;
   let rafId;
-  let lastTs = 0;
+  let lastTs  = 0;
+  let stopped = false;
+
+  const cancel = () => {
+    stopped = true;
+    cancelAnimationFrame(rafId);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  };
 
   const frame = (ts) => {
+    if (stopped) return;
     if (ts - lastTs < 16) { rafId = requestAnimationFrame(frame); return; }
     lastTs = ts;
 
@@ -53,6 +60,7 @@ export function animProjectile(ctx, canvas, arena, sx, sy, tx, ty, col) {
     let ring = 0;
     let ringLastTs = 0;
     const ringFrame = (ts2) => {
+      if (stopped) return;
       if (ts2 - ringLastTs < 70) { rafId = requestAnimationFrame(ringFrame); return; }
       ringLastTs = ts2;
 
@@ -75,18 +83,27 @@ export function animProjectile(ctx, canvas, arena, sx, sy, tx, ty, col) {
     rafId = requestAnimationFrame(ringFrame);
   };
   rafId = requestAnimationFrame(frame);
+  return cancel;
 }
 
 /** Rocket: fiery projectile + dramatic multi-stage explosion. */
 export function animRocket(ctx, canvas, arena, sx, sy, tx, ty, col) {
   const FIRE  = '#FF6A00';
   const trail = [];
-  let tick = 0;
+  let tick    = 0;
   let rafId;
-  let lastTs = 0;
+  let lastTs  = 0;
+  let stopped = false;
+
+  const cancel = () => {
+    stopped = true;
+    cancelAnimationFrame(rafId);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  };
 
   // ── Phase 1: projectile flight ─────────────────────────────────────────
   const frame = (ts) => {
+    if (stopped) return;
     if (ts - lastTs < 16) { rafId = requestAnimationFrame(frame); return; }
     lastTs = ts;
 
@@ -106,7 +123,7 @@ export function animRocket(ctx, canvas, arena, sx, sy, tx, ty, col) {
       const t      = i / trail.length;
       const alpha  = t * 0.75;
       const radius = 1.5 + t * 6;
-      const hue    = Math.floor(15 + (1 - t) * 25); // orange → yellow tip
+      const hue    = Math.floor(15 + (1 - t) * 25);
       ctx.beginPath();
       ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
       ctx.fillStyle = `hsla(${hue},100%,55%,${alpha})`;
@@ -135,9 +152,14 @@ export function animRocket(ctx, canvas, arena, sx, sy, tx, ty, col) {
                r: 2 + Math.random() * 4 };
     });
 
-    let exTick = 0;
+    let exTick   = 0;
     let exLastTs = 0;
     const exFrame = (ts2) => {
+      if (stopped) return;
+      if (exTick >= 65) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        return;
+      }
       if (ts2 - exLastTs < 16) { rafId = requestAnimationFrame(exFrame); return; }
       exLastTs = ts2;
 
@@ -147,8 +169,8 @@ export function animRocket(ctx, canvas, arena, sx, sy, tx, ty, col) {
       const ep = Math.min(exTick / 55, 1);
 
       // ── fireball core ──
-      const fR     = canvas.offsetWidth * 0.055 * Math.sin(ep * Math.PI);
-      const grd    = ctx.createRadialGradient(tx, ty, 0, tx, ty, fR || 1);
+      const fR  = canvas.offsetWidth * 0.055 * Math.sin(ep * Math.PI);
+      const grd = ctx.createRadialGradient(tx, ty, 0, tx, ty, fR || 1);
       grd.addColorStop(0,   'rgba(255,255,210,0.95)');
       grd.addColorStop(0.35,'rgba(255,160, 30,0.80)');
       grd.addColorStop(1,   'rgba(200, 30,  0,0.00)');
@@ -162,11 +184,11 @@ export function animRocket(ctx, canvas, arena, sx, sy, tx, ty, col) {
         const delay = w * 0.15;
         const rp    = Math.max(ep - delay, 0) / (1 - delay || 1);
         if (rp <= 0) continue;
-        const rr  = canvas.offsetWidth * 0.18 * rp;
-        const al  = Math.max(0, (1 - rp) * 0.8);
+        const rr = canvas.offsetWidth * 0.18 * rp;
+        const al = Math.max(0, (1 - rp) * 0.8);
         ctx.save();
         ctx.beginPath();
-        ctx.arc(tx, ty, rr, 0, Math.PI * 2);
+        ctx.arc(tx, ty, Math.max(rr, 0.1), 0, Math.PI * 2);
         ctx.strokeStyle = w === 0 ? '#FFFFFF' : FIRE;
         ctx.lineWidth   = w === 0 ? 3.5 : 2;
         ctx.globalAlpha = al;
@@ -181,13 +203,13 @@ export function animRocket(ctx, canvas, arena, sx, sy, tx, ty, col) {
         if (d.life <= 0) return;
         d.x   += d.vx;
         d.y   += d.vy;
-        d.vy  += 0.18;      // gravity
+        d.vy  += 0.18;
         d.vx  *= 0.97;
         d.life -= d.decay;
         const hue = Math.floor(15 + d.life * 30);
         ctx.save();
         ctx.beginPath();
-        ctx.arc(d.x, d.y, d.r * d.life, 0, Math.PI * 2);
+        ctx.arc(d.x, d.y, Math.max(d.r * d.life, 0.1), 0, Math.PI * 2);
         ctx.fillStyle   = `hsla(${hue},100%,55%,${d.life * 0.9})`;
         ctx.shadowBlur  = 8;
         ctx.shadowColor = FIRE;
@@ -204,6 +226,7 @@ export function animRocket(ctx, canvas, arena, sx, sy, tx, ty, col) {
     rafId = requestAnimationFrame(exFrame);
   };
   rafId = requestAnimationFrame(frame);
+  return cancel;
 }
 
 /** Expanding hexagon rings at the player's own base (repair). */
@@ -211,9 +234,17 @@ export function animRepair(ctx, canvas, cx, cy) {
   const col  = '#4A8C42';
   let tick   = 0;
   let rafId;
-  let lastTs = 0;
+  let lastTs  = 0;
+  let stopped = false;
+
+  const cancel = () => {
+    stopped = true;
+    cancelAnimationFrame(rafId);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  };
 
   const frame = (ts) => {
+    if (stopped) return;
     if (ts - lastTs < 16) { rafId = requestAnimationFrame(frame); return; }
     lastTs = ts;
 
@@ -255,6 +286,7 @@ export function animRepair(ctx, canvas, cx, cy) {
     rafId = requestAnimationFrame(frame);
   };
   rafId = requestAnimationFrame(frame);
+  return cancel;
 }
 
 /** Expanding scan rings with directional lines from src toward dst. */
@@ -263,9 +295,17 @@ export function animSonar(ctx, canvas, srcX, srcY, dstX, dstY, col) {
   const baseAngle = Math.atan2(dstY - srcY, dstX - srcX);
   let frameN      = 0;
   let rafId;
-  let lastTs = 0;
+  let lastTs  = 0;
+  let stopped = false;
+
+  const cancel = () => {
+    stopped = true;
+    cancelAnimationFrame(rafId);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  };
 
   const frame = (ts) => {
+    if (stopped) return;
     if (ts - lastTs < 16) { rafId = requestAnimationFrame(frame); return; }
     lastTs = ts;
 
@@ -307,4 +347,7 @@ export function animSonar(ctx, canvas, srcX, srcY, dstX, dstY, col) {
     rafId = requestAnimationFrame(frame);
   };
   rafId = requestAnimationFrame(frame);
+  return cancel;
 }
+
+
