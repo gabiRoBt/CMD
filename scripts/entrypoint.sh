@@ -264,11 +264,11 @@ cmdhelp() {
   ╠════════════════════════════════════════════════════════════════╣
   ║  ABILITĂȚI  (activează din bara UI de jos)                     ║
   ║                                                                ║
-  ║    🌀 SCRAMBLE   Schimbă comenzile terminalului 30s            ║
+  ║    🌀 SCRAMBLE   Schimbă comenzile terminalului 30s             ║
   ║       (ex. ls devine rm). Harta se scrie în /tmp/scramble...   ║
-  ║    🚀 ROCKET     Blochează tastatura inamicului 15s            ║
-  ║    📡 SONAR      Dezvăluie fișierele + șterge foldere goale    ║
-  ║    🔧 REPAIR     Anulează ultimul atac în primele 5 secunde    ║
+  ║    🚀 ROCKET     Blochează tastatura inamicului 15s             ║
+  ║    📡 SONAR      Dezvăluie fișierele + șterge foldere goale     ║
+  ║    🔧 REPAIR     Anulează ultimul atac în primele 5 secunde     ║
   ╚════════════════════════════════════════════════════════════════╝
 
 GUIDE
@@ -304,10 +304,10 @@ GUIDE
   ║      /bin/nuke_system <mdp_trouve>                             ║
   ╠════════════════════════════════════════════════════════════════╣
   ║  CAPACITÉS                                                     ║
-  ║    🌀 SCRAMBLE   Mélange les commandes du terminal 30s         ║
-  ║    🚀 ROCKET     Bloque le clavier ennemi 15s                  ║
-  ║    📡 SONAR      Révèle les fichiers + supprime dossiers vides ║
-  ║    🔧 REPAIR     Annule la dernière attaque (délai 5s)         ║
+  ║    🌀 SCRAMBLE   Mélange les commandes du terminal 30s          ║
+  ║    🚀 ROCKET     Bloque le clavier ennemi 15s                   ║
+  ║    📡 SONAR      Révèle les fichiers + supprime dossiers vides  ║
+  ║    🔧 REPAIR     Annule la dernière attaque (délai 5s)          ║
   ╚════════════════════════════════════════════════════════════════╝
 
 GUIDE
@@ -343,10 +343,10 @@ GUIDE
   ║      /bin/nuke_system <contraseña_encontrada>                  ║
   ╠════════════════════════════════════════════════════════════════╣
   ║  HABILIDADES                                                   ║
-  ║    🌀 SCRAMBLE   Mezcla los comandos del terminal 30s          ║
-  ║    🚀 ROCKET     Bloquea el teclado enemigo 15s                ║
-  ║    📡 SONAR      Revela archivos + borra carpetas vacías       ║
-  ║    🔧 REPAIR     Anula el último ataque (ventana de 5s)        ║
+  ║    🌀 SCRAMBLE   Mezcla los comandos del terminal 30s           ║
+  ║    🚀 ROCKET     Bloquea el teclado enemigo 15s                 ║
+  ║    📡 SONAR      Revela archivos + borra carpetas vacías        ║
+  ║    🔧 REPAIR     Anula el último ataque (ventana de 5s)         ║
   ╚════════════════════════════════════════════════════════════════╝
 
 GUIDE
@@ -382,10 +382,10 @@ GUIDE
   ║      /bin/nuke_system <found_password>                         ║
   ╠════════════════════════════════════════════════════════════════╣
   ║  ABILITIES  (activate from the web UI footer bar)              ║
-  ║    🌀 SCRAMBLE   Remaps YOUR terminal commands randomly 30s    ║
-  ║    🚀 ROCKET     Blocks ALL your keyboard input for 15s        ║
-  ║    📡 SONAR      Reveals enemy files + deletes empty dirs      ║
-  ║    🔧 REPAIR     Counters last received attack (5s window)     ║
+  ║    🌀 SCRAMBLE   Remaps YOUR terminal commands randomly 30s     ║
+  ║    🚀 ROCKET     Blocks ALL your keyboard input for 15s         ║
+  ║    📡 SONAR      Reveals enemy files + deletes empty dirs       ║
+  ║    🔧 REPAIR     Counters last received attack (5s window)      ║
   ╚════════════════════════════════════════════════════════════════╝
 
 GUIDE
@@ -580,28 +580,28 @@ if [ "$ARENA_TYPE" = "competitive" ]; then
         echo ""
         echo "$BOX_TOP"
         if [ "$PLAYER_LANG" = "ro" ]; then
-            printf "  ║%-${W}s║\n" "  ⚠️   MECI COMPETITIV — AVERTISMENT DE PREDARE"
+            printf "  ║%-${W}s ║\n" "  ⚠️   MECI COMPETITIV — AVERTISMENT DE PREDARE"
             echo "$BOX_BLK"
             printf "  ║%-${W}s║\n" "  Ieșirea va conta ca o ÎNFRÂNGERE."
             printf "  ║%-${W}s║\n" "  Scorul tău ELO va fi penalizat."
             echo "$BOX_BLK"
             printf "  ║%-${W}s║\n" "  Scrie 'surrender' pentru a confirma, sau Enter anulează."
         elif [ "$PLAYER_LANG" = "fr" ]; then
-            printf "  ║%-${W}s║\n" "  ⚠️   MATCH COMPÉTITIF — AVERTISSEMENT D'ABANDON"
+            printf "  ║%-${W}s ║\n" "  ⚠️   MATCH COMPÉTITIF — AVERTISSEMENT D'ABANDON"
             echo "$BOX_BLK"
             printf "  ║%-${W}s║\n" "  Quitter comptera comme une DÉFAITE."
             printf "  ║%-${W}s║\n" "  Votre score ELO sera pénalisé."
             echo "$BOX_BLK"
             printf "  ║%-${W}s║\n" "  Tapez 'surrender' pour confirmer, ou Entrée annule."
         elif [ "$PLAYER_LANG" = "es" ]; then
-            printf "  ║%-${W}s║\n" "  ⚠️   PARTIDA COMPETITIVA — ADVERTENCIA DE RENDICIÓN"
+            printf "  ║%-${W}s ║\n" "  ⚠️   PARTIDA COMPETITIVA — ADVERTENCIA DE RENDICIÓN"
             echo "$BOX_BLK"
             printf "  ║%-${W}s║\n" "  Salir contará como una DERROTA."
             printf "  ║%-${W}s║\n" "  Tu puntuación ELO será penalizada."
             echo "$BOX_BLK"
             printf "  ║%-${W}s║\n" "  Escribe 'surrender' para confirmar, o Enter para anular."
         else
-            printf "  ║%-${W}s║\n" "  ⚠️   COMPETITIVE MATCH — SURRENDER WARNING"
+            printf "  ║%-${W}s ║\n" "  ⚠️   COMPETITIVE MATCH — SURRENDER WARNING"
             echo "$BOX_BLK"
             printf "  ║%-${W}s║\n" "  Exiting will count as a LOSS."
             printf "  ║%-${W}s║\n" "  Your ELO rating will be penalized."
